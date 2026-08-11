@@ -84,6 +84,10 @@
   pre { background: #0b101c; border: 1px solid var(--brd); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font-family: var(--mono); font-size: 12.5px; color: #cbd5f0; margin: 10px 0; }
   .callout { border: 1px solid rgba(52,211,153,0.3); background: rgba(52,211,153,0.06); border-radius: 12px; padding: 16px 18px; color: var(--dim); font-size: 14px; }
   .callout strong { color: var(--good); }
+  .callout.warn { border-color: rgba(245,177,61,0.35); background: rgba(245,177,61,0.06); }
+  .callout.warn strong { color: var(--med); }
+  .sub-h { font-size: 15px; margin: 26px 0 10px; color: var(--ink); }
+  .sub-h::before { content: "▸ "; color: var(--accent-2); }
 
   footer { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--brd); color: var(--muted); font-size: 12.5px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 
@@ -218,7 +222,75 @@
   </section>
 
   <section>
-    <h2><span class="num">05</span>Reproduce it</h2>
+    <h2><span class="num">05</span>"Why not just upgrade Spring Boot?"</h2>
+    <p>
+      The fair challenge to this demo. We tested it two ways — both empirically, on real builds.
+    </p>
+
+    <h3 class="sub-h">Attempt A — bump the parent to the latest Boot, keep the pins</h3>
+    <p>
+      Changing <em>only</em> the parent version (to Boot 3.5.3) fixes <strong>4 of 12</strong>.
+      The other 7 stay vulnerable, because <strong>an explicit <code>&lt;version&gt;</code> in the POM
+      overrides the Boot BOM</strong>. Maven downloaded Boot's managed jackson 2.19.1 metadata and
+      still resolved <code>2.13.1</code> — the pin won.
+    </p>
+    <div class="cols">
+      <div class="card good">
+        <h3>Fixed by the bump — 4</h3>
+        <ul>
+          <li>Spring4Shell → spring-beans 6.2.8</li>
+          <li>SpEL DoS → spring-expression 6.2.8</li>
+          <li>Security bypass → spring-security-web 6.5.1</li>
+          <li>Actuator → spring-boot 3.5.3</li>
+        </ul>
+      </div>
+      <div class="card bad">
+        <h3>Still vulnerable — 7</h3>
+        <ul>
+          <li>log4j <code>2.14.1</code>, commons-text <code>1.9</code></li>
+          <li>snakeyaml <code>1.29</code>, jackson <code>2.13.1</code></li>
+          <li>h2 <code>1.4.199</code>, commons-collections <code>3.2.1</code></li>
+          <li>spring-cloud-function <code>3.2.2</code></li>
+        </ul>
+        <span class="badge bad">and it does not compile (Security 6 API)</span>
+      </div>
+    </div>
+
+    <h3 class="sub-h">Attempt B — latest Boot 4.x <em>and</em> delete every pin</h3>
+    <p>
+      This does reach <strong>12 / 12</strong> — we built it and ran it. But it is a migration,
+      not an upgrade, and two of those twelve did not close the way you'd expect:
+      <code>commons-text</code> is <strong>not in the Boot BOM</strong>, so its pin can't be deleted
+      at all (it just has to be kept current, forever), and <code>commons-collections</code> was
+      fixed by <strong>deleting the dependency</strong>, which was only safe because nothing used it.
+    </p>
+    <div class="callout warn">
+      <strong>What the OSS path actually cost:</strong> Java 21 · Maven 3.8.5 → 3.9.9 ·
+      a build-plugin workaround (Boot 4 pins a compiler plugin that crashes) ·
+      <code>WebSecurityConfig</code> rewritten for Spring Security 7 ·
+      Jackson <code>com.fasterxml</code> → <code>tools.jackson</code> ·
+      Spring Cloud 2021.0.1 → 2025.1.2 · Boot 2→4, Spring 5→7, Security 5→7.
+    </div>
+
+    <div class="table-scroll" style="margin-top:16px">
+      <table>
+        <thead><tr><th>Path</th><th>CVEs closed</th><th>App code changes</th><th>Toolchain</th><th>Major versions crossed</th></tr></thead>
+        <tbody>
+          <tr><td>Boot 3.5.3, pins kept</td><td>4 / 12</td><td>Required (won't compile)</td><td>—</td><td>Boot 2→3, Spring 5→6</td></tr>
+          <tr><td>Boot 4.1.0, pins deleted</td><td>12 / 12</td><td><span class="was">Security rewrite</span></td><td>New JDK + Maven</td><td>Boot 2→4, Spring 5→7, Jackson 2→3</td></tr>
+          <tr><td><strong>Spring Enterprise 2.7.33</strong></td><td><strong class="now">12 / 12</strong></td><td><strong class="now">None</strong></td><td><strong class="now">None</strong></td><td><strong class="now">None</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:14px">
+      Both paths can reach zero. The enterprise path gets there <em>today</em>, with a dependency-only
+      diff you can ship this afternoon; the OSS path is a migration project you schedule. That choice —
+      not the CVE count — is the actual decision.
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="num">06</span>Reproduce it</h2>
     <ol class="steps">
       <li>Configure <code>~/.m2/settings.xml</code> for the <code>tanzu-maven</code> repository and export
           <code>TANZU_USER</code> / <code>TANZU_TOKEN</code> (see the setup guide).</li>
