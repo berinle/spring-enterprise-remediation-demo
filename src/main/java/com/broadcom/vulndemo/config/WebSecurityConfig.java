@@ -2,6 +2,8 @@ package com.broadcom.vulndemo.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,20 +20,25 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 public class WebSecurityConfig {
 
+    /*
+     * MIGRATION NOTE (Spring Security 7 / Spring Boot 4):
+     * every line of this method had to be rewritten. `authorizeRequests()` and
+     * `regexMatchers()` were removed, and the `csrf()` / `headers()` no-arg
+     * overloads are gone in favour of lambda customizers. This is the hidden
+     * cost of the major-version upgrade — the dependency bump alone does not
+     * compile.
+     */
     @Bean
-    @SuppressWarnings("deprecation")
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // Vulnerable matcher pattern (CVE-2022-22978): regex '.' + trailing segment.
-            .authorizeRequests(auth -> auth
-                .regexMatchers("/admin/.*").authenticated()
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(RegexRequestMatcher.regexMatcher("/admin/.*")).authenticated()
                 .anyRequest().permitAll()
             )
-            .httpBasic();
-
-        // H2 console + dashboard are framed/inline; relax protections for the demo.
-        http.csrf().disable();
-        http.headers().frameOptions().disable();
+            .httpBasic(Customizer.withDefaults())
+            // H2 console + dashboard are framed/inline; relax protections for the demo.
+            .csrf(csrf -> csrf.disable())
+            .headers(headers -> headers.frameOptions(frame -> frame.disable()));
         return http.build();
     }
 

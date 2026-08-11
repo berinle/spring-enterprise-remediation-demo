@@ -6,42 +6,46 @@
 
     <!--
       ============================================================================
-      DELIBERATELY VULNERABLE APPLICATION - FOR TANZU PLATFORM DEMO PURPOSES ONLY
+      OSS "LATEST" BUILD — Spring Boot 4.x with ALL VERSION PINS REMOVED
       ============================================================================
-      This project intentionally pins OLD, VULNERABLE dependency versions so that
-      the Tanzu Application Platform / Broadcom Spring Enterprise supply-chain and
-      remediation capabilities can be demonstrated end-to-end.
+      Experiment: how far does the pure open-source path get you?
 
-      DO NOT deploy this to any environment reachable from untrusted networks.
+      Rules for this branch:
+        1. Move to the latest Spring Boot (4.1.0).
+        2. Delete every explicit <version> pin so Boot's BOM decides — the pins
+           were what defeated the upgrade on the `main` branch.
 
-      A future worktree will patch every CVE below using the artifacts available
-      in the Broadcom Spring Enterprise (commercial) repository.
+      Findings are recorded in the README. The short version: everything Boot's
+      BOM manages is fixed automatically, but libraries OUTSIDE the BOM
+      (commons-text, commons-collections) still need manual version management,
+      and the major-version jump forces real application code changes
+      (Jakarta namespace + Spring Security 7 API).
       ============================================================================
     -->
 
-    <!-- Spring Boot 2.6.3 -> Spring Framework 5.3.15 (pre-Spring4Shell fix) -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.6.3</version>
+        <version>4.1.0</version>
         <relativePath/>
     </parent>
 
     <groupId>com.broadcom.vulndemo</groupId>
     <artifactId>tanzu-vuln-demo</artifactId>
-    <version>1.0.0-VULNERABLE</version>
-    <name>Tanzu Vulnerability Demo</name>
-    <description>Intentionally vulnerable Spring Boot app for demonstrating Tanzu Platform CVE remediation</description>
+    <version>1.0.0-OSS-LATEST</version>
+    <name>Tanzu Vulnerability Demo (OSS latest)</name>
+    <description>Spring Boot 4.x, all version pins removed — OSS upgrade-path experiment</description>
 
     <properties>
         <java.version>17</java.version>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- NOT managed by the Spring Boot BOM — still needs a manual version.
+             This is the point: removing the pin is not an option here, because
+             nothing upstream would supply one. -->
+        <commons-text.version>1.15.0</commons-text.version>
     </properties>
 
     <dependencies>
-        <!-- Web + Thymeleaf for the dashboard -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -50,82 +54,61 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
-
-        <!-- Actuator: several actuator/env CVEs live here -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-
-        <!-- Spring Security 5.6.1 -> CVE-2022-22978 (authorization bypass via regex) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-        <!-- ================= INTENTIONALLY VULNERABLE PINS ================= -->
-
-        <!-- CVE-2022-22963: Spring Cloud Function SpEL RCE -->
+        <!-- was pinned 3.2.2 (CVE-2022-22963) — now managed by the Spring Cloud
+             2025.1.2 release train, which targets Boot 4.x → resolves 5.0.3 -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-function-web</artifactId>
-            <version>3.2.2</version>
         </dependency>
 
-        <!-- CVE-2021-44228 / CVE-2021-45046: Log4Shell (log4j-core 2.14.1) -->
+        <!-- ============ PINS REMOVED — versions now come from Boot's BOM ============ -->
+
+        <!-- was 2.14.1 (Log4Shell) — Boot 4.1.0 manages log4j2 2.25.4 -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
-            <version>2.14.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
-            <version>2.14.1</version>
         </dependency>
 
-        <!-- CVE-2022-42889: Text4Shell (commons-text 1.9) -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-text</artifactId>
-            <version>1.9</version>
-        </dependency>
-
-        <!-- CVE-2015-6420: unsafe deserialization (commons-collections 3.2.1) -->
-        <dependency>
-            <groupId>commons-collections</groupId>
-            <artifactId>commons-collections</artifactId>
-            <version>3.2.1</version>
-        </dependency>
-
-        <!-- CVE-2022-1471: SnakeYAML constructor RCE (1.29) -->
+        <!-- was 1.29 (CVE-2022-1471) — Boot manages snakeyaml 2.6 -->
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
-            <version>1.29</version>
         </dependency>
 
-        <!-- CVE-2020-36518: jackson-databind nested object DoS (2.13.1) -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.13.1</version>
-        </dependency>
-
-        <!-- CVE-2021-42392 / CVE-2022-23221: H2 console JNDI RCE (1.4.199) -->
+        <!-- was 1.4.199 (H2 JNDI RCE) — Boot manages 2.4.240 -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <version>1.4.199</version>
         </dependency>
 
-        <!-- Provides @ConfigurationProperties metadata; harmless -->
+        <!-- ====== STILL REQUIRES A MANUAL VERSION: outside the Spring Boot BOM ====== -->
+
+        <!-- was 1.9 (Text4Shell). Boot does NOT manage commons-text, so the pin
+             cannot simply be deleted — it just has to be kept current. -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+            <version>${commons-text.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
             <optional>true</optional>
         </dependency>
-
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -135,10 +118,11 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- Release train that targets Boot 4.x (spring-cloud-function 5.0.3) -->
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2021.0.1</version>
+                <version>2025.1.2</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -147,6 +131,18 @@
 
     <build>
         <plugins>
+            <!-- Boot 4.1.0 pins maven-compiler-plugin 3.15.0, which fails on this
+                 toolchain ("Cannot load from object array ... this.hashes is null").
+                 Pinning a known-good compiler plugin is part of the upgrade cost. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <!-- In-process javac crashes on this toolchain; fork it. -->
+                    <fork>true</fork>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

@@ -1,133 +1,107 @@
-# Tanzu Vulnerability Demo
+# OSS Upgrade Path — Spring Boot 4.x with all version pins removed
 
-An **intentionally vulnerable** Spring Boot application built to demonstrate
-Tanzu Platform / Broadcom Spring Enterprise supply-chain scanning and
-remediation. The React landing page is a live CVE dashboard: it lists every
-known vulnerability shipped in this build, and each card can fire a real request
-against the corresponding insecure endpoint.
+This worktree answers a fair challenge to the enterprise-remediation demo:
 
-> ⚠️ **Do not deploy this anywhere reachable from an untrusted network.** Every
-> dependency is deliberately pinned to a vulnerable version.
+> *"Couldn't you just move to the latest Spring Boot and delete the pinned versions?"*
+
+**Short answer: yes — it closes every CVE, but it is a migration, not an upgrade.**
+It cost a new JDK, a new Maven, a build-plugin workaround, a rewritten security
+config, a Jackson namespace change, and a four-year jump in the Spring Cloud
+release train. Contrast that with the enterprise path (`patched-enterprise`),
+which closed the same 12 CVEs with a dependency-only `pom.xml` diff and zero code
+changes.
 
 ---
 
-## Stack
+## Experiment 1 — bump the parent only (pins left in place)
 
-- **Backend:** Spring Boot 2.6.3 (Spring Framework 5.3.15), Java 17
-- **Frontend:** React 18 + Vite, built straight into `src/main/resources/static`
-  so `mvn package` produces one self-contained executable jar
-- **Data:** the dashboard is driven by `VulnerabilityRegistry`, which mirrors the
-  pinned versions in `pom.xml` — so what the page advertises is what a scanner
-  (Tanzu / Grype / Carbon Black) will actually report
+Starting from `main`, changing **only** the parent to Spring Boot 3.5.3:
 
-## Advertised CVEs
+| Result | CVEs |
+|---|---|
+| ✅ Fixed | **4** — Spring4Shell, SpEL DoS, Security bypass, actuator |
+| ❌ Still vulnerable | **7** — log4j 2.14.1, commons-text 1.9, commons-collections 3.2.1, snakeyaml 1.29, jackson 2.13.1, h2 1.4.199, spring-cloud-function 3.2.2 |
 
-| CVE | Component | Affected → Fixed | Severity | Live demo |
-|-----|-----------|------------------|----------|-----------|
-| CVE-2021-44228 (Log4Shell) | log4j-core | 2.14.1 → 2.17.1 | Critical | `GET /api/log` |
-| CVE-2022-22965 (Spring4Shell) | spring-beans / webmvc | 5.3.15 → 5.3.18 | Critical | `POST /api/greeting` |
-| CVE-2022-22963 | spring-cloud-function-web | 3.2.2 → 3.2.3 | Critical | `POST /fn/functionRouter` |
-| CVE-2022-42889 (Text4Shell) | commons-text | 1.9 → 1.10.0 | Critical | `GET /api/lookup` |
-| CVE-2022-1471 | snakeyaml | 1.29 → 2.0 | High | `POST /api/yaml` |
-| CVE-2021-42392 | h2database | 1.4.199 → 2.0.206 | High | H2 console |
-| CVE-2022-22978 | spring-security-web | 5.6.1 → 5.6.4 | High | `GET /admin/secret` |
-| CVE-2020-36518 | jackson-databind | 2.13.1 → 2.13.2.1 | High | `POST /api/json` |
-| CVE-2015-6420 | commons-collections | 3.2.1 → 3.2.2 | High | — |
-| CVE-2022-22950 | spring-expression | 5.3.15 → 5.3.17 | Medium | — |
-| CVE-2023-20873 | spring-boot-actuator | 2.6.3 → 2.7.11 | Medium | `/actuator` |
-| CVE-2022-45688 | org.json (transitive) | — | Medium | — |
+**Why:** an explicit `<version>` in the POM overrides the Boot BOM. Maven downloaded
+Boot 3.5.3's managed jackson 2.19.1 metadata and then resolved **2.13.1** anyway,
+because the POM pinned it. Only the versions Boot controls transitively moved.
+
+> This is the real-world failure mode: someone pins a version years ago, and every
+> framework upgrade afterwards silently steps around it.
+
+It also **does not compile** — `WebSecurityConfig` uses `authorizeRequests()` and
+`regexMatchers()`, both removed in Spring Security 6.
+
+## Experiment 2 — latest Boot 4.x **and** delete the pins (this branch)
+
+Spring Boot **4.1.0**, every removable `<version>` deleted:
+
+| CVE | Component | Was | Now | How |
+|-----|-----------|-----|-----|-----|
+| CVE-2022-22965 | spring-beans / webmvc | 5.3.15 | **7.0.8** | Boot BOM |
+| CVE-2022-22950 | spring-expression | 5.3.15 | **7.0.8** | Boot BOM |
+| CVE-2022-22978 | spring-security-web | 5.6.1 | **7.1.0** | Boot BOM |
+| CVE-2023-20873 | spring-boot-actuator | 2.6.3 | **4.1.0** | Boot BOM |
+| CVE-2021-44228 | log4j-core | 2.14.1 | **2.25.4** | pin removed → Boot BOM |
+| CVE-2022-1471 | snakeyaml | 1.29 | **2.6** | pin removed → Boot BOM |
+| CVE-2021-42392 | h2database | 1.4.199 | **2.4.240** | pin removed → Boot BOM |
+| CVE-2020-36518 | jackson-databind | 2.13.1 | **3.1.4** | pin removed → Boot BOM ⚠️ *namespace change* |
+| CVE-2022-22963 | spring-cloud-function | 3.2.2 | **5.0.3** | release train 2021.0.1 → 2025.1.2 |
+| CVE-2022-42889 | commons-text | 1.9 | **1.15.0** | ⚠️ **manual** — not in the Boot BOM |
+| CVE-2015-6420 | commons-collections | 3.2.1 | **removed** | ⚠️ deleted, not upgraded (unused) |
+| CVE-2022-45688 | org.json | — | **absent** | never on the classpath |
+
+**Result: 12 / 12 closed.**
+
+### But note *how* they closed
+
+- **10** were fixed by a version moving.
+- **1** (`commons-text`) could **not** have its pin removed — Spring Boot does not
+  manage it, so deleting the version breaks the build. It still requires manual
+  version management forever. Same for anything else outside the BOM.
+- **1** (`commons-collections`) was fixed by **deleting the dependency**, which was
+  only safe because nothing used it. That is the correct fix for dead weight — but
+  it is not something an upgrade does for you.
+
+## What the upgrade actually cost
+
+Everything below was required to get a green build. None of it was needed on the
+enterprise path.
+
+| # | Cost | Detail |
+|---|------|--------|
+| 1 | **JDK** | Built with Java 21 (`sdk use java 21.0.8-librca`) |
+| 2 | **Maven** | 3.8.5 → **3.9.9**; Boot 4's plugin set requires it |
+| 3 | **Build workaround** | Boot 4.1.0 pins maven-compiler-plugin 3.15.0, which crashes here (`Cannot load from object array because "this.hashes" is null`). Pinned 3.13.0 + `<fork>true</fork>` |
+| 4 | **Spring Security 7** | `WebSecurityConfig` fully rewritten — `authorizeRequests()` → `authorizeHttpRequests()`, `regexMatchers()` → `RegexRequestMatcher.regexMatcher()`, `csrf()`/`headers()` → lambda customizers |
+| 5 | **Jackson 2 → 3** | `com.fasterxml.jackson.core` → **`tools.jackson.core`**. This app never imported Jackson directly; one that did would need every import changed |
+| 6 | **Spring Cloud** | Release train 2021.0.1 → **2025.1.2**, spring-cloud-function 3.2.2 → **5.0.3** (two major versions) |
+| 7 | **Jakarta EE** | `javax.*` → `jakarta.*` — free here only because this app has no servlet-API imports; most real apps are not so lucky |
 
 ## Build & run
 
 ```bash
-# 1. Build the React dashboard into the Spring static resources
-cd frontend
-npm install
-npm run build
-cd ..
-
-# 2. Package and run the self-contained jar
-mvn clean package -DskipTests
-java -jar target/tanzu-vuln-demo-1.0.0-VULNERABLE.jar
+export JAVA_HOME=~/.sdkman/candidates/java/21.0.8-librca
+cd frontend && npm install && npm run build && cd ..
+~/.sdkman/candidates/maven/3.9.9/bin/mvn clean package -DskipTests
+java -jar target/tanzu-vuln-demo-1.0.0-OSS-LATEST.jar --server.port=8082
 ```
 
-Open http://localhost:8080.
+Verified: the app starts on Boot 4.1.0 and the dashboard plus all demo endpoints
+respond. The attack replays are refused (SnakeYAML and the SpEL router now return
+errors rather than executing) — this branch keeps the original vulnerable-build
+copy, so those refusals surface as raw 500s instead of the friendly messages on
+`patched-enterprise`.
 
-### Front-end dev loop (optional)
+## Takeaway
 
-Run the Spring app on 8080, then in another terminal:
+Both paths reach zero CVEs. The difference is what it costs and when you can ship it:
 
-```bash
-cd frontend
-npm run dev      # Vite dev server on :5173, proxies /api and /actuator to :8080
-```
-
-## What the dashboard does
-
-- **Animated risk summary** — CVE count and max-CVSS ring count up on load.
-- **Clickable severity tiles** — filter the grid by Critical / High / Medium.
-- **Search** — filter by CVE id, title, or component.
-- **Live exploit console** — expand any card and click *Run* to send a real
-  (safe) request to the vulnerable endpoint and see the response inline.
-- **Remediation preview** — toggles the banner between the vulnerable state and
-  the future "0 CVEs" patched state.
-
-## Endpoints
-
-| Path | Purpose |
-|------|---------|
-| `/` | React CVE dashboard |
-| `/api/dashboard` | JSON payload backing the dashboard |
-| `/api/vulnerabilities` | Raw CVE list |
-| `/api/log`, `/api/lookup`, `/api/yaml`, `/api/json`, `/api/greeting` | Vulnerable demo endpoints |
-| `/fn/functionRouter` | Spring Cloud Function routing (SpEL) endpoint |
-| `/admin/secret` | "Protected" resource (basic auth: `admin` / `admin`) |
-| `/actuator/**` | Fully-exposed actuator endpoints |
-| `/h2-console` | H2 web console |
-
-## Remediation (branch: `patched-enterprise`)
-
-A companion git worktree rebuilds this exact application against the **Broadcom
-Spring Enterprise** repository. Every CVE closes with the **security fix entirely in
-`pom.xml`** — dependency bumps only, no application logic. (That branch also re-skins
-the dashboard to a remediated state, but those changes don't affect the fix.) The
-headline Spring CVEs are fixed by moving to the **Spring Boot 2.7.33** patch line,
-which is past open-source end-of-life and resolves only from
-`packages.broadcom.com/artifactory/tanzu-maven`.
-
-A one-page, self-contained explainer lives on that branch at
-[`remediation-report.html`](remediation-report.html) — open it in any browser.
-
-### CVE → patched version (actually-resolved artifacts)
-
-| CVE | Component | Severity | Was | Installed | Fixed in |
-|-----|-----------|----------|-----|-----------|----------|
-| CVE-2022-22965 (Spring4Shell) | spring-beans / spring-webmvc | Critical | 5.3.15 | 5.3.48 | 5.3.18 |
-| CVE-2021-44228 (Log4Shell) | log4j-core | Critical | 2.14.1 | 2.17.1 | 2.17.1 |
-| CVE-2022-22963 | spring-cloud-function | Critical | 3.2.2 | 3.2.12 | 3.2.3 |
-| CVE-2022-42889 (Text4Shell) | commons-text | Critical | 1.9 | 1.10.0 | 1.10.0 |
-| CVE-2022-1471 | snakeyaml | High | 1.29 | 2.0 | 2.0 |
-| CVE-2015-6420 | commons-collections | High | 3.2.1 | 3.2.2 | 3.2.2 |
-| CVE-2021-42392 | h2database | High | 1.4.199 | 2.1.214 | 2.0.206 |
-| CVE-2022-22978 | spring-security-web | High | 5.6.1 | 5.7.23 | 5.6.4 |
-| CVE-2020-36518 | jackson-databind | High | 2.13.1 | 2.13.5 | 2.13.2.1 |
-| CVE-2022-22950 | spring-expression | Medium | 5.3.15 | 5.3.48 | 5.3.17 |
-| CVE-2023-20873 | spring-boot-actuator | Medium | 2.6.3 | 2.7.33 | 2.7.11 |
-| CVE-2022-45688 | org.json (transitive) | Medium | 20090211 | not present | 20230227 |
-
-```bash
-# the entire remediation, in one diff:
-git diff main patched-enterprise -- pom.xml
-```
-
-### Enterprise repository setup (summary)
-
-1. Configure `~/.m2/settings.xml` with the `tanzu-maven` server + repository; the
-   token is read from `TANZU_TOKEN` (never committed).
-2. Export `TANZU_USER` / `TANZU_TOKEN`, then verify entitlement (expect `200`):
-   ```bash
-   curl -u "$TANZU_USER:$TANZU_TOKEN" -o /dev/null -w "%{http_code}\n" \
-     https://packages.broadcom.com/artifactory/tanzu-maven/
-   ```
-3. Build the patched branch — a successful resolve of Boot 2.7.33 is itself proof
-   the entitlement is in effect.
+| | OSS latest (this branch) | Broadcom Spring Enterprise (`patched-enterprise`) |
+|---|---|---|
+| CVEs closed | 12 / 12 | 12 / 12 |
+| App code changes | **Security config rewrite** (+ Jackson/Jakarta risk) | **None** |
+| Toolchain changes | New JDK, new Maven, plugin workaround | None |
+| Major versions crossed | Boot 2→4, Spring 5→7, Security 5→7, Jackson 2→3, Cloud 2021→2025 | None (stays on 2.7.x) |
+| Libraries outside the BOM | Still manual | Still manual |
+| Realistic effort | Migration project | Dependency bump |
