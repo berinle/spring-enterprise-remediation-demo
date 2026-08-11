@@ -1,20 +1,23 @@
-export default function TopBar({ build }) {
+export default function TopBar({ build, remediated }) {
   return (
     <header className="topbar">
       <div className="brand">
-        <div className="brand-mark">T</div>
+        <div className={`brand-mark ${remediated ? 'ok' : ''}`}>T</div>
         <div>
           <div className="brand-name">
-            Tanzu Platform <span>· Vulnerability Demo</span>
+            Tanzu Platform{' '}
+            <span>· {remediated ? 'OSS Upgrade Path' : 'Vulnerability Demo'}</span>
           </div>
           <div className="brand-sub">
-            Broadcom Spring Enterprise · supply-chain remediation showcase
+            {remediated
+              ? 'Spring Boot 4.x from Maven Central · the comparison build'
+              : 'Broadcom Spring Enterprise · supply-chain remediation showcase'}
           </div>
         </div>
       </div>
 
-      <div className="build-chip">
-        <span className="dot" />
+      <div className={`build-chip ${remediated ? 'ok' : ''}`}>
+        <span className={`dot ${remediated ? 'ok' : ''}`} />
         <span className="mono">{build.appVersion}</span>
         <span className="sep">|</span>
         <span className="mono">Boot {build.springBootVersion}</span>

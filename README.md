@@ -75,6 +75,7 @@ enterprise path.
 | 3 | **Build workaround** | Boot 4.1.0 pins maven-compiler-plugin 3.15.0, which crashes here (`Cannot load from object array because "this.hashes" is null`). Pinned 3.13.0 + `<fork>true</fork>` |
 | 4 | **Spring Security 7** | `WebSecurityConfig` fully rewritten — `authorizeRequests()` → `authorizeHttpRequests()`, `regexMatchers()` → `RegexRequestMatcher.regexMatcher()`, `csrf()`/`headers()` → lambda customizers |
 | 5 | **Jackson 2 → 3** | `com.fasterxml.jackson.core` → **`tools.jackson.core`**. This app never imported Jackson directly; one that did would need every import changed |
+| 5b | **Boot package moves** | `ErrorController` relocated: `org.springframework.boot.web.servlet.error` → **`org.springframework.boot.webmvc.error`**. Found the hard way, at compile time |
 | 6 | **Spring Cloud** | Release train 2021.0.1 → **2025.1.2**, spring-cloud-function 3.2.2 → **5.0.3** (two major versions) |
 | 7 | **Jakarta EE** | `javax.*` → `jakarta.*` — free here only because this app has no servlet-API imports; most real apps are not so lucky |
 
@@ -87,11 +88,27 @@ cd frontend && npm install && npm run build && cd ..
 java -jar target/tanzu-vuln-demo-1.0.0-OSS-LATEST.jar --server.port=8082
 ```
 
-Verified: the app starts on Boot 4.1.0 and the dashboard plus all demo endpoints
-respond. The attack replays are refused (SnakeYAML and the SpEL router now return
-errors rather than executing) — this branch keeps the original vulnerable-build
-copy, so those refusals surface as raw 500s instead of the friendly messages on
-`patched-enterprise`.
+Then open <http://localhost:8082>.
+
+### Demoing from this branch
+
+The dashboard renders the remediated state (green, **0 active CVEs**) with each
+card showing the version Boot 4.1.0 actually resolved, plus an amber
+**"What this upgrade cost"** panel listing everything the migration required —
+so the screen tells the whole story without narration.
+
+Every replayed attack returns an explanatory refusal rather than a raw 500:
+
+| Replay | Response |
+|---|---|
+| SnakeYAML | `ComposerException: Global tag is not allowed: tag:yaml.org,2002:java.util.Date` — *snakeyaml 2.6 refused arbitrary-type construction* |
+| Spring Cloud Function SpEL | `SpelEvaluationException: EL1005E: Type cannot be found 'java.lang.Runtime'` — the sandbox blocking the RCE primitive itself |
+| Text4Shell | payload returned verbatim, `interpolated == input` |
+| Log4Shell | logged inertly by log4j 2.25.4, message lookups disabled |
+
+Refusals raised deep inside a library (the SpEL router) can't be caught by a
+`@RestControllerAdvice`, so `DemoErrorController` overrides `/error` to turn any
+such failure into a clear "the attack was refused, and here is what refused it".
 
 ## Takeaway
 
