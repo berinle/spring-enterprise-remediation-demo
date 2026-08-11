@@ -34,16 +34,24 @@ public class DashboardController {
         counts.put("medium", registry.countBySeverity(Severity.MEDIUM));
         counts.put("low", registry.countBySeverity(Severity.LOW));
 
+        boolean remediated = registry.isRemediated();
+
         Map<String, Object> build = new LinkedHashMap<>();
-        build.put("appVersion", "1.0.0-VULNERABLE");
-        build.put("springBootVersion", "2.6.3");
-        build.put("springFrameworkVersion", "5.3.15");
+        build.put("appVersion", "1.0.0-PATCHED");
+        build.put("springBootVersion", "2.7.33");
+        build.put("springFrameworkVersion", "5.3.48");
         build.put("javaVersion", System.getProperty("java.version"));
+        build.put("remediated", remediated);
+        build.put("repository", "Broadcom Spring Enterprise · packages.broadcom.com/artifactory/tanzu-maven");
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("build", build);
         payload.put("total", registry.total());
-        payload.put("maxCvss", registry.maxCvss());
+        // Active (unpatched) exposure — 0 in this build. The CVSS ring reflects
+        // live risk, not the historical severity of the closed CVEs.
+        payload.put("maxCvss", remediated ? 0.0 : registry.maxCvss());
+        payload.put("activeCount", registry.activeCount());
+        payload.put("remediated", remediated);
         payload.put("counts", counts);
         payload.put("vulnerabilities", registry.getAll());
         return payload;

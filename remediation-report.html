@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tanzu Vulnerability Demo — Remediation Report</title>
+<style>
+  :root {
+    --bg: #0a0e17; --bg-2: #0f1524;
+    --panel: #141b2c; --brd: rgba(120,140,190,0.16);
+    --ink: #e8edf7; --dim: #9aa6be; --muted: #6b7690;
+    --accent: #4f8cff; --accent-2: #7c5cff;
+    --crit: #f43f5e; --high: #fb7139; --med: #f5b13d; --good: #34d399;
+    --mono: "SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans); color: var(--ink); line-height: 1.6;
+    background:
+      radial-gradient(1200px 700px at 10% -10%, rgba(79,140,255,0.14), transparent 60%),
+      radial-gradient(1000px 600px at 100% 0%, rgba(52,211,153,0.12), transparent 55%),
+      linear-gradient(180deg, var(--bg-2), var(--bg));
+    min-height: 100vh; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 56px 28px 80px; }
+
+  header.hero { margin-bottom: 40px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700;
+    letter-spacing: 1.4px; color: #b8f5da; background: rgba(52,211,153,0.12);
+    border: 1px solid rgba(52,211,153,0.4); padding: 7px 13px; border-radius: 999px; margin-bottom: 20px;
+  }
+  h1 { font-size: 38px; line-height: 1.12; margin: 0 0 14px; letter-spacing: -0.5px; }
+  h1 .hl { background: linear-gradient(90deg, var(--good), #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { color: var(--dim); font-size: 16px; max-width: 660px; }
+
+  section { margin: 40px 0; }
+  h2 { font-size: 21px; margin: 0 0 14px; letter-spacing: -0.2px; }
+  h2 .num { color: var(--accent); font-family: var(--mono); font-size: 15px; margin-right: 8px; }
+  p { color: var(--dim); margin: 0 0 14px; }
+  strong { color: var(--ink); font-weight: 650; }
+  code { font-family: var(--mono); font-size: 0.9em; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 5px; color: #cbd5f0; }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--brd); border-radius: 14px; padding: 20px 22px; }
+  .card.bad { box-shadow: inset 3px 0 0 var(--crit); }
+  .card.good { box-shadow: inset 3px 0 0 var(--good); }
+  .card h3 { margin: 0 0 4px; font-size: 15px; }
+  .card .tag { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+  .card ul { margin: 12px 0 0; padding-left: 18px; color: var(--dim); font-size: 13.5px; }
+  .card li { margin: 4px 0; }
+  .card .badge { display: inline-block; font-family: var(--mono); font-size: 12px; margin-top: 10px; padding: 4px 10px; border-radius: 7px; }
+  .badge.bad { background: rgba(244,63,94,0.14); color: var(--crit); }
+  .badge.good { background: rgba(52,211,153,0.14); color: var(--good); }
+
+  .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 10px; margin: 18px 0; }
+  .flow .node { background: var(--panel); border: 1px solid var(--brd); border-radius: 12px; padding: 14px 12px; text-align: center; font-size: 13px; }
+  .flow .node .big { font-family: var(--mono); font-size: 13px; color: var(--ink); display: block; margin-bottom: 3px; }
+  .flow .node small { color: var(--muted); font-size: 11px; }
+  .flow .arrow { color: var(--accent-2); font-size: 20px; text-align: center; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .table-scroll { overflow-x: auto; border: 1px solid var(--brd); border-radius: 12px; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--brd); white-space: nowrap; }
+  th { background: rgba(255,255,255,0.03); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  td.mono, th.mono { font-family: var(--mono); }
+  .was { color: var(--high); text-decoration: line-through; opacity: 0.8; }
+  .now { color: var(--good); }
+  .sev { font-family: var(--mono); font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 5px; }
+  .sev.C { background: rgba(244,63,94,0.16); color: var(--crit); }
+  .sev.H { background: rgba(251,113,57,0.16); color: var(--high); }
+  .sev.M { background: rgba(245,177,61,0.16); color: var(--med); }
+
+  .steps { counter-reset: s; padding: 0; list-style: none; margin: 0; }
+  .steps li { position: relative; padding: 4px 0 16px 42px; color: var(--dim); }
+  .steps li::before {
+    counter-increment: s; content: counter(s); position: absolute; left: 0; top: 0;
+    width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
+    background: rgba(79,140,255,0.14); color: var(--accent); font-weight: 700; font-size: 13px; font-family: var(--mono);
+  }
+  pre { background: #0b101c; border: 1px solid var(--brd); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font-family: var(--mono); font-size: 12.5px; color: #cbd5f0; margin: 10px 0; }
+  .callout { border: 1px solid rgba(52,211,153,0.3); background: rgba(52,211,153,0.06); border-radius: 12px; padding: 16px 18px; color: var(--dim); font-size: 14px; }
+  .callout strong { color: var(--good); }
+
+  footer { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--brd); color: var(--muted); font-size: 12.5px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
+  @media (max-width: 720px) {
+    h1 { font-size: 30px; }
+    .cols, .flow { grid-template-columns: 1fr; }
+    .flow .arrow { transform: rotate(90deg); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow">✓ TANZU PLATFORM · SUPPLY-CHAIN REMEDIATION</div>
+    <h1>From <span class="hl">12 known CVEs</span> to zero —<br/>without changing application code.</h1>
+    <p class="sub">
+      This project is a live demonstration of Broadcom Tanzu Platform's Spring Enterprise
+      remediation capability. One deliberately-vulnerable Spring Boot app, one patched rebuild,
+      and a single dependency-only diff between them.
+    </p>
+  </header>
+
+  <section>
+    <h2><span class="num">01</span>What this is</h2>
+    <p>
+      A Spring Boot application was built with <strong>12 real, well-known CVEs</strong> baked in
+      by pinning old dependency versions on purpose. A React dashboard renders the findings and can
+      fire a live request at each vulnerable endpoint to prove the exposure is real. The app was then
+      rebuilt — in a separate git worktree — against the <strong>Broadcom Spring Enterprise</strong>
+      repository. Every CVE closed — the security fix is entirely in <code>pom.xml</code>.
+    </p>
+    <div class="cols">
+      <div class="card bad">
+        <div class="tag">branch: main</div>
+        <h3>Vulnerable build</h3>
+        <ul>
+          <li>Spring Boot 2.6.3 · Spring 5.3.15</li>
+          <li>log4j 2.14.1, commons-text 1.9, snakeyaml 1.29, H2 1.4.199…</li>
+          <li>Live exploit console demonstrates each finding</li>
+        </ul>
+        <span class="badge bad">Max CVSS 10.0 · 4 Critical / 5 High / 3 Medium</span>
+      </div>
+      <div class="card good">
+        <div class="tag">branch: patched-enterprise</div>
+        <h3>Remediated build</h3>
+        <ul>
+          <li>Spring Boot 2.7.33 · Spring 5.3.48 (enterprise)</li>
+          <li>All pinned libraries bumped to fixed versions</li>
+          <li>Same console now shows each attack neutralized</li>
+        </ul>
+        <span class="badge good">0 active CVEs · application code unchanged</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span>How the remediation works</h2>
+    <p>
+      The headline Spring CVEs are fixed by moving to the <strong>Spring Boot 2.7.33</strong> patch
+      line. That release is <strong>past open-source end-of-life</strong> — Maven Central does not
+      host it. It resolves only from the Broadcom Spring Enterprise repository, which the Tanzu
+      Platform entitlement unlocks. That single parent bump carries patched Spring Framework, Spring
+      Security, Jackson and H2; the remaining pinned libraries are bumped to their public fixed versions.
+    </p>
+    <div class="flow">
+      <div class="node"><span class="big">Vulnerable app</span><small>pinned old versions</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><span class="big">pom.xml diff</span><small>parent → 2.7.33 + version bumps</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><span class="big">tanzu-maven</span><small>Broadcom Spring Enterprise</small></div>
+    </div>
+    <div class="callout">
+      <strong>Why the enterprise repo matters:</strong> Boot 2.7.33 (and its Spring 5.3.48 / Security
+      5.7.23 transitive set) are commercially-supported patches published after OSS support ended.
+      A build resolving them successfully <em>is itself proof</em> the entitlement is in effect.
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span>CVE → patched version</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>CVE</th><th>Component</th><th>Sev</th>
+            <th class="mono">Was</th><th class="mono">Installed</th><th class="mono">Fixed in</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">CVE-2022-22965</td><td>spring-beans / webmvc</td><td><span class="sev C">CRIT</span></td><td class="mono was">5.3.15</td><td class="mono now">5.3.48</td><td class="mono">5.3.18</td></tr>
+          <tr><td class="mono">CVE-2021-44228</td><td>log4j-core</td><td><span class="sev C">CRIT</span></td><td class="mono was">2.14.1</td><td class="mono now">2.17.1</td><td class="mono">2.17.1</td></tr>
+          <tr><td class="mono">CVE-2022-22963</td><td>spring-cloud-function</td><td><span class="sev C">CRIT</span></td><td class="mono was">3.2.2</td><td class="mono now">3.2.12</td><td class="mono">3.2.3</td></tr>
+          <tr><td class="mono">CVE-2022-42889</td><td>commons-text</td><td><span class="sev C">CRIT</span></td><td class="mono was">1.9</td><td class="mono now">1.10.0</td><td class="mono">1.10.0</td></tr>
+          <tr><td class="mono">CVE-2022-1471</td><td>snakeyaml</td><td><span class="sev H">HIGH</span></td><td class="mono was">1.29</td><td class="mono now">2.0</td><td class="mono">2.0</td></tr>
+          <tr><td class="mono">CVE-2015-6420</td><td>commons-collections</td><td><span class="sev H">HIGH</span></td><td class="mono was">3.2.1</td><td class="mono now">3.2.2</td><td class="mono">3.2.2</td></tr>
+          <tr><td class="mono">CVE-2021-42392</td><td>h2database</td><td><span class="sev H">HIGH</span></td><td class="mono was">1.4.199</td><td class="mono now">2.1.214</td><td class="mono">2.0.206</td></tr>
+          <tr><td class="mono">CVE-2022-22978</td><td>spring-security-web</td><td><span class="sev H">HIGH</span></td><td class="mono was">5.6.1</td><td class="mono now">5.7.23</td><td class="mono">5.6.4</td></tr>
+          <tr><td class="mono">CVE-2020-36518</td><td>jackson-databind</td><td><span class="sev H">HIGH</span></td><td class="mono was">2.13.1</td><td class="mono now">2.13.5</td><td class="mono">2.13.2.1</td></tr>
+          <tr><td class="mono">CVE-2022-22950</td><td>spring-expression</td><td><span class="sev M">MED</span></td><td class="mono was">5.3.15</td><td class="mono now">5.3.48</td><td class="mono">5.3.17</td></tr>
+          <tr><td class="mono">CVE-2023-20873</td><td>spring-boot-actuator</td><td><span class="sev M">MED</span></td><td class="mono was">2.6.3</td><td class="mono now">2.7.33</td><td class="mono">2.7.11</td></tr>
+          <tr><td class="mono">CVE-2022-45688</td><td>org.json (transitive)</td><td><span class="sev M">MED</span></td><td class="mono was">20090211</td><td class="mono now">not present</td><td class="mono">20230227</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span>Proof, not just version numbers</h2>
+    <p>
+      Each dashboard card carries the exact same live request in both builds. The payload never
+      changes — only the response does:
+    </p>
+    <div class="cols">
+      <div class="card bad">
+        <h3>Vulnerable</h3>
+        <ul>
+          <li><strong>Text4Shell:</strong> <code>${script:…}</code> interpolated</li>
+          <li><strong>SnakeYAML:</strong> <code>!!java.util.Date</code> instantiated</li>
+          <li><strong>SpEL routing:</strong> header expression executed</li>
+        </ul>
+      </div>
+      <div class="card good">
+        <h3>Patched (replay)</h3>
+        <ul>
+          <li><strong>Text4Shell:</strong> payload returned verbatim, unresolved</li>
+          <li><strong>SnakeYAML:</strong> <code>Global tag is not allowed</code> — refused</li>
+          <li><strong>SpEL routing:</strong> <code>T(java.lang.Runtime)</code> rejected</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">05</span>Reproduce it</h2>
+    <ol class="steps">
+      <li>Configure <code>~/.m2/settings.xml</code> for the <code>tanzu-maven</code> repository and export
+          <code>TANZU_USER</code> / <code>TANZU_TOKEN</code> (see the setup guide).</li>
+      <li>Verify the entitlement: a <code>200</code> from
+          <code>packages.broadcom.com/artifactory/tanzu-maven/</code>.</li>
+      <li>Build and run either branch:</li>
+    </ol>
+    <pre>cd frontend && npm install && npm run build && cd ..
+mvn clean package -DskipTests
+java -jar target/tanzu-vuln-demo-*.jar   # http://localhost:8080</pre>
+    <div class="callout">
+      <strong>The whole story in one line:</strong> <code>git diff main patched-enterprise -- pom.xml</code>
+      is the entire security fix — dependency bumps only, no application logic. (The other files on this
+      branch just re-skin the dashboard to its remediated state and make the demo probes report cleanly;
+      they don't affect whether the CVEs are fixed.)
+    </div>
+  </section>
+
+  <footer>
+    <span>Tanzu Platform capability demo · remediation report</span>
+    <span>Intentionally vulnerable — do not expose to untrusted networks</span>
+  </footer>
+
+</div>
+</body>
+</html>

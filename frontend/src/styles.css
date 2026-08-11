@@ -255,3 +255,64 @@ body {
   .search input { width: 160px; }
   .remediation { flex-direction: column; align-items: flex-start; }
 }
+
+/* =====================================================================
+   REMEDIATED (patched) build treatment — green/"all clear" theme
+   ===================================================================== */
+
+/* page ambient shift toward green when remediated */
+.scanlines.ok { }
+
+.brand-mark.ok { background: linear-gradient(135deg, var(--good), #10b981); box-shadow: 0 8px 24px rgba(52,211,153,0.35); }
+
+.build-chip.ok { border-color: rgba(52,211,153,0.35); }
+.build-chip .dot.ok { background: var(--good); animation: none; }
+
+/* hero */
+.risk-pill.ok {
+  color: #b8f5da; background: rgba(52,211,153,0.12); border-color: rgba(52,211,153,0.4);
+}
+.risk-pill.ok .check { font-weight: 900; color: var(--good); }
+.hero h1 .count.ok {
+  background: linear-gradient(90deg, var(--good), #22d3ee);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.repo-chip {
+  font-size: 12px; color: var(--ink-dim); margin: 0 0 18px;
+  padding: 8px 12px; border: 1px solid rgba(52,211,153,0.25);
+  border-radius: 9px; background: rgba(52,211,153,0.06); display: inline-block;
+}
+
+/* score ring goes green + reads 0 */
+.score-card.ok { border-color: rgba(52,211,153,0.3); }
+.score-ring.ok {
+  background:
+    radial-gradient(closest-side, var(--bg-2) 76%, transparent 77%),
+    conic-gradient(var(--good) 100%, rgba(255,255,255,0.08) 0);
+}
+.score-note.ok { color: var(--good); }
+
+/* severity tiles when patched */
+.stat.ok { opacity: 0.96; }
+.stat.ok .stat-num .was { color: var(--good); }
+.stat.ok::before { opacity: 0.5; }
+.resolved-tag {
+  display: block; font-size: 10px; color: var(--good); margin-top: 3px;
+  letter-spacing: 0.3px; text-transform: none;
+}
+
+/* patched CVE cards */
+.cve-card.sev-patched {
+  box-shadow: 0 0 0 1px rgba(52,211,153,0.22), 0 10px 30px -18px rgba(52,211,153,0.45);
+}
+.sev-badge.ok { background: rgba(52,211,153,0.18); color: var(--good); border: 1px solid rgba(52,211,153,0.4); }
+.v.mono.struck, b.struck { text-decoration: line-through; opacity: 0.65; }
+.demo-toggle.ok { color: var(--good); }
+.demo-toggle.ok:hover { border-color: var(--good); background: rgba(52,211,153,0.1); }
+
+/* remediation banner badge */
+.rem-badge {
+  flex: none; font-size: 12px; color: var(--good);
+  padding: 9px 13px; border: 1px dashed rgba(52,211,153,0.45);
+  border-radius: 10px; background: rgba(52,211,153,0.06);
+}

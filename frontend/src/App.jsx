@@ -65,16 +65,24 @@ export default function App() {
     )
   }
 
+  const remediated = !!data.remediated
+
   return (
     <>
-      <div className="scanlines" aria-hidden="true" />
-      <TopBar build={data.build} />
+      <div className={`scanlines ${remediated ? 'ok' : ''}`} aria-hidden="true" />
+      <TopBar build={data.build} remediated={remediated} />
       <main className="wrap">
-        <Hero total={data.total} maxCvss={data.maxCvss} />
+        <Hero
+          total={data.total}
+          maxCvss={data.maxCvss}
+          remediated={remediated}
+          repository={data.build.repository}
+        />
         <SeverityStats
           counts={data.counts}
           active={severityFilter}
           onSelect={setSeverityFilter}
+          remediated={remediated}
         />
         <FilterBar
           query={query}
@@ -82,6 +90,7 @@ export default function App() {
           shown={visible.length}
           total={data.total}
           severity={severityFilter}
+          remediated={remediated}
           onClear={() => {
             setSeverityFilter('ALL')
             setQuery('')
@@ -89,18 +98,20 @@ export default function App() {
         />
         <section className="cve-grid">
           {visible.map((v) => (
-            <CveCard key={v.cveId} vuln={v} />
+            <CveCard key={v.cveId} vuln={v} remediated={remediated} />
           ))}
         </section>
         {visible.length === 0 && (
           <div className="empty">No CVEs match the current filter.</div>
         )}
-        <RemediationBanner />
+        <RemediationBanner remediated={remediated} />
       </main>
       <footer className="foot">
         <span>Tanzu Platform capability demo</span>
         <span className="dim">
-          Intentionally vulnerable · do not expose to untrusted networks
+          {remediated
+            ? 'Remediated build · rebuilt against Broadcom Spring Enterprise'
+            : 'Intentionally vulnerable · do not expose to untrusted networks'}
         </span>
       </footer>
     </>

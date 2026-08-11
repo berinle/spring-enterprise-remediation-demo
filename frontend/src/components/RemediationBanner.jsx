@@ -1,36 +1,36 @@
-import { useState } from 'react'
-
-export default function RemediationBanner() {
-  const [patched, setPatched] = useState(false)
+export default function RemediationBanner({ remediated }) {
+  if (remediated) {
+    return (
+      <section className="remediation is-patched">
+        <div className="rem-icon">✓</div>
+        <div className="rem-body">
+          <h2>Remediated — 0 active CVEs</h2>
+          <p>
+            This build was rebuilt against the{' '}
+            <strong>Broadcom Spring Enterprise</strong> repository. Every pinned
+            artifact now resolves to a patched, commercially-supported release —
+            including <strong>Spring Boot 2.7.33</strong>, which is past OSS
+            end-of-life and available only through the enterprise entitlement. The
+            board is clear, with no change to application code.
+          </p>
+        </div>
+        <div className="rem-badge mono">git diff = pom.xml only</div>
+      </section>
+    )
+  }
 
   return (
-    <section className={`remediation ${patched ? 'is-patched' : ''}`}>
-      <div className="rem-icon">{patched ? '✓' : '↺'}</div>
+    <section className="remediation">
+      <div className="rem-icon">↺</div>
       <div className="rem-body">
-        <h2>{patched ? 'Remediated build — 0 known CVEs' : 'Future state — one-command remediation'}</h2>
+        <h2>Future state — one-command remediation</h2>
         <p>
-          {patched ? (
-            <>
-              Rebuilt against the <strong>Broadcom Spring Enterprise</strong> repository:
-              every pinned artifact is replaced with a patched, commercially-supported
-              release — the board is clear, with no change to application code.
-            </>
-          ) : (
-            <>
-              A companion worktree will rebuild this exact application against the{' '}
-              <strong>Broadcom Spring Enterprise</strong> repository, swapping every
-              pinned artifact for a patched, commercially-supported release — clearing
-              the board without touching a line of application code.
-            </>
-          )}
+          A companion worktree will rebuild this exact application against the{' '}
+          <strong>Broadcom Spring Enterprise</strong> repository, swapping every
+          pinned artifact for a patched, commercially-supported release — clearing
+          the board without touching a line of application code.
         </p>
       </div>
-      <button
-        className="rem-toggle"
-        onClick={() => setPatched((p) => !p)}
-      >
-        {patched ? 'Show vulnerable state' : 'Preview patched state'}
-      </button>
     </section>
   )
 }

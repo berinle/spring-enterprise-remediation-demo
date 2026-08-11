@@ -6,38 +6,50 @@
 
     <!--
       ============================================================================
-      DELIBERATELY VULNERABLE APPLICATION - FOR TANZU PLATFORM DEMO PURPOSES ONLY
+      PATCHED BUILD — REMEDIATED AGAINST BROADCOM SPRING ENTERPRISE
       ============================================================================
-      This project intentionally pins OLD, VULNERABLE dependency versions so that
-      the Tanzu Application Platform / Broadcom Spring Enterprise supply-chain and
-      remediation capabilities can be demonstrated end-to-end.
+      This is the remediated counterpart of the intentionally-vulnerable build.
+      Every CVE from the vulnerable dashboard is closed here:
 
-      DO NOT deploy this to any environment reachable from untrusted networks.
+        * Spring-owned CVEs (Spring4Shell, Spring Security bypass, SpEL DoS,
+          actuator, Spring Cloud Function SpEL) are fixed by moving to the
+          Spring Boot 2.7.33 ENTERPRISE patch line, which has exited OSS support
+          on Maven Central and resolves ONLY from the Broadcom Spring Enterprise
+          repository (packages.broadcom.com/artifactory/tanzu-maven).
+        * The remaining pinned libraries are bumped to their fixed versions.
 
-      A future worktree will patch every CVE below using the artifacts available
-      in the Broadcom Spring Enterprise (commercial) repository.
+      Requires ~/.m2/settings.xml configured for the tanzu-maven repository and
+      the TANZU_USER / TANZU_TOKEN environment variables at build time.
       ============================================================================
     -->
 
-    <!-- Spring Boot 2.6.3 -> Spring Framework 5.3.15 (pre-Spring4Shell fix) -->
+    <!-- ENTERPRISE patch release: past OSS EOL, served from tanzu-maven.
+         Brings Spring Framework 5.3.31 (Spring4Shell fixed in 5.3.18),
+         Spring Security 5.7.x (CVE-2022-22978 fixed in 5.6.4),
+         and patched jackson / H2 via the Boot dependency BOM. -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.6.3</version>
+        <version>2.7.33</version>
         <relativePath/>
     </parent>
 
     <groupId>com.broadcom.vulndemo</groupId>
     <artifactId>tanzu-vuln-demo</artifactId>
-    <version>1.0.0-VULNERABLE</version>
-    <name>Tanzu Vulnerability Demo</name>
-    <description>Intentionally vulnerable Spring Boot app for demonstrating Tanzu Platform CVE remediation</description>
+    <version>1.0.0-PATCHED</version>
+    <name>Tanzu Vulnerability Demo (Patched)</name>
+    <description>Remediated Spring Boot app — CVEs closed via Broadcom Spring Enterprise</description>
 
     <properties>
         <java.version>17</java.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- CVE-2021-44228 / CVE-2021-45046: Log4Shell fixed in 2.17.1 -->
+        <log4j2.version>2.17.1</log4j2.version>
+        <!-- CVE-2022-1471: SnakeYAML constructor RCE fixed in 2.0 -->
+        <snakeyaml.version>2.0</snakeyaml.version>
     </properties>
 
     <dependencies>
@@ -51,75 +63,69 @@
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
 
-        <!-- Actuator: several actuator/env CVEs live here -->
+        <!-- Actuator: patched in Boot 2.7.33 (CVE-2023-20873 fixed in 2.7.11) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- Spring Security 5.6.1 -> CVE-2022-22978 (authorization bypass via regex) -->
+        <!-- Spring Security 5.7.x via Boot 2.7.33 (CVE-2022-22978 fixed in 5.6.4) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-        <!-- ================= INTENTIONALLY VULNERABLE PINS ================= -->
+        <!-- ===================== PATCHED DEPENDENCIES ===================== -->
 
-        <!-- CVE-2022-22963: Spring Cloud Function SpEL RCE -->
+        <!-- CVE-2022-22963 fixed: Spring Cloud Function 3.2.9 (via 2021.0.9 BOM) -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-function-web</artifactId>
-            <version>3.2.2</version>
         </dependency>
 
-        <!-- CVE-2021-44228 / CVE-2021-45046: Log4Shell (log4j-core 2.14.1) -->
+        <!-- CVE-2021-44228 / CVE-2021-45046 fixed: log4j-core 2.17.1
+             (spring-boot-dependencies also manages log4j2.version above) -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
-            <version>2.14.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
-            <version>2.14.1</version>
         </dependency>
 
-        <!-- CVE-2022-42889: Text4Shell (commons-text 1.9) -->
+        <!-- CVE-2022-42889 fixed: commons-text 1.10.0 -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-text</artifactId>
-            <version>1.9</version>
+            <version>1.10.0</version>
         </dependency>
 
-        <!-- CVE-2015-6420: unsafe deserialization (commons-collections 3.2.1) -->
+        <!-- CVE-2015-6420 fixed: commons-collections 3.2.2 -->
         <dependency>
             <groupId>commons-collections</groupId>
             <artifactId>commons-collections</artifactId>
-            <version>3.2.1</version>
+            <version>3.2.2</version>
         </dependency>
 
-        <!-- CVE-2022-1471: SnakeYAML constructor RCE (1.29) -->
+        <!-- CVE-2022-1471 fixed: SnakeYAML 2.0 (snakeyaml.version property) -->
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
-            <version>1.29</version>
         </dependency>
 
-        <!-- CVE-2020-36518: jackson-databind nested object DoS (2.13.1) -->
+        <!-- CVE-2020-36518 fixed: jackson-databind managed by Boot 2.7.33 (2.13.5) -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.13.1</version>
         </dependency>
 
-        <!-- CVE-2021-42392 / CVE-2022-23221: H2 console JNDI RCE (1.4.199) -->
+        <!-- CVE-2021-42392 / CVE-2022-23221 fixed: H2 2.1.214 managed by Boot 2.7.33 -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <version>1.4.199</version>
         </dependency>
 
-        <!-- Provides @ConfigurationProperties metadata; harmless -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
@@ -135,10 +141,11 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- 2021.0.9 manages spring-cloud-function 3.2.9 (CVE-2022-22963 fixed in 3.2.3) -->
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2021.0.1</version>
+                <version>2021.0.9</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

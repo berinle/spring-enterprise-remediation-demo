@@ -8,7 +8,7 @@ const SEV_CLASS = {
   LOW: 'sev-low',
 }
 
-export default function CveCard({ vuln }) {
+export default function CveCard({ vuln, remediated }) {
   const [open, setOpen] = useState(false)
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState(null)
@@ -32,7 +32,11 @@ export default function CveCard({ vuln }) {
   }
 
   return (
-    <article className={`cve-card ${SEV_CLASS[vuln.severity]} ${open ? 'open' : ''}`}>
+    <article
+      className={`cve-card ${remediated ? 'sev-patched' : SEV_CLASS[vuln.severity]} ${
+        open ? 'open' : ''
+      }`}
+    >
       <div className="cve-top">
         <a
           className="cve-id"
@@ -42,12 +46,16 @@ export default function CveCard({ vuln }) {
         >
           {vuln.cveId} ↗
         </a>
-        <span
-          className="sev-badge"
-          style={{ background: vuln.severity && sevColor(vuln.severity) }}
-        >
-          {sevLabel(vuln.severity)}
-        </span>
+        {remediated ? (
+          <span className="sev-badge ok">✓ Remediated</span>
+        ) : (
+          <span
+            className="sev-badge"
+            style={{ background: vuln.severity && sevColor(vuln.severity) }}
+          >
+            {sevLabel(vuln.severity)}
+          </span>
+        )}
       </div>
 
       <h3 className="cve-title">{vuln.title}</h3>
@@ -59,51 +67,86 @@ export default function CveCard({ vuln }) {
           <span className="v mono">{vuln.component}</span>
         </div>
         <div className="meta-row">
-          <span className="k">Affected</span>
-          <span className="v mono bad">{vuln.affectedVersion}</span>
+          <span className="k">Was</span>
+          <span className="v mono bad struck">{vuln.affectedVersion}</span>
         </div>
         <div className="meta-row">
-          <span className="k">Fixed in</span>
-          <span className="v mono good">{vuln.fixedVersion}</span>
+          <span className="k">{remediated ? 'Installed' : 'Fixed in'}</span>
+          <span className="v mono good">
+            {remediated ? vuln.installedVersion : vuln.fixedVersion}
+            {remediated && ' ✓'}
+          </span>
         </div>
       </div>
 
       <div className="cve-foot">
         <span className="cvss">
-          CVSS <b>{vuln.cvss.toFixed(1)}</b>
+          {remediated ? (
+            <>
+              was CVSS <b className="struck">{vuln.cvss.toFixed(1)}</b>
+            </>
+          ) : (
+            <>
+              CVSS <b>{vuln.cvss.toFixed(1)}</b>
+            </>
+          )}
         </span>
         {exploit ? (
           <button
-            className="demo-toggle"
+            className={`demo-toggle ${remediated ? 'ok' : ''}`}
             onClick={() => setOpen((o) => !o)}
             aria-expanded={open}
           >
-            {open ? 'Hide exploit' : '▸ Live exploit'}
+            {open
+              ? remediated
+                ? 'Hide check'
+                : 'Hide exploit'
+              : remediated
+              ? '▸ Verify patch'
+              : '▸ Live exploit'}
           </button>
         ) : (
-          <span className="no-demo">no live demo</span>
+          <span className="no-demo">
+            {remediated ? 'patched (no probe)' : 'no live demo'}
+          </span>
         )}
       </div>
 
       {open && exploit && (
         <div className="console">
-          <div className="console-hint">{exploit.hint}</div>
+          <div className="console-hint">
+            {remediated
+              ? 'Replaying the original attack against the patched build — it should now be refused or handled safely.'
+              : exploit.hint}
+          </div>
           <div className="console-cmd mono">
             <span className="method">{exploit.method}</span> {exploit.path}
           </div>
           <button className="run-btn" onClick={fire} disabled={running}>
-            {running ? 'running…' : `Run ${exploit.label.split('—')[0].trim()}`}
+            {running
+              ? 'running…'
+              : remediated
+              ? 'Replay attack (expect safe result)'
+              : `Run ${exploit.label.split('—')[0].trim()}`}
           </button>
 
           {result && (
-            <div className={`console-out ${errored ? 'err' : ''}`}>
+            <div className={`console-out ${errored && !remediated ? 'err' : ''}`}>
               <div className="console-status">
-                <span
-                  className={`status-pill ${result.status >= 200 && result.status < 400 ? 'ok' : 'warn'}`}
-                >
-                  {result.status} {result.statusText}
+                {remediated ? (
+                  <span className="status-pill ok">🛡 attack neutralized</span>
+                ) : (
+                  <span
+                    className={`status-pill ${
+                      result.status >= 200 && result.status < 400 ? 'ok' : 'warn'
+                    }`}
+                  >
+                    {result.status} {result.statusText}
+                  </span>
+                )}
+                <span className="mono dim">
+                  {result.request} · {result.status} {result.statusText}
                 </span>
-                <span className="mono dim">{result.request}</span>
                 {result.elapsed > 0 && <span className="dim">{result.elapsed}ms</span>}
               </div>
               <pre className="mono">{result.body}</pre>

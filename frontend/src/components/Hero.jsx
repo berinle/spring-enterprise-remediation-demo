@@ -18,26 +18,57 @@ function useCountUp(value, ms = 900) {
   return n
 }
 
-export default function Hero({ total, maxCvss }) {
+export default function Hero({ total, maxCvss, remediated, repository }) {
   const animatedTotal = Math.round(useCountUp(total))
   const animatedScore = useCountUp(maxCvss)
 
   return (
-    <section className="hero">
+    <section className={`hero ${remediated ? 'remediated' : ''}`}>
       <div className="hero-left">
-        <div className="risk-pill">
-          <span className="pulse" /> ACTIVE RISK — UNPATCHED BUILD
-        </div>
-        <h1>
-          This application ships with{' '}
-          <span className="count">{animatedTotal}</span> known CVEs.
-        </h1>
-        <p className="lede">
-          Every dependency below is intentionally pinned to a vulnerable version.
-          Point your scanner — or the <strong>Tanzu Application Catalog</strong> —
-          at this build to watch the findings light up, then rebuild against the{' '}
-          <strong>Broadcom Spring Enterprise</strong> repository to clear them.
-        </p>
+        {remediated ? (
+          <div className="risk-pill ok">
+            <span className="check">✓</span> REMEDIATED — BROADCOM SPRING ENTERPRISE
+          </div>
+        ) : (
+          <div className="risk-pill">
+            <span className="pulse" /> ACTIVE RISK — UNPATCHED BUILD
+          </div>
+        )}
+
+        {remediated ? (
+          <>
+            <h1>
+              All <span className="count ok">{animatedTotal}</span> CVEs closed on
+              this build.
+            </h1>
+            <p className="lede">
+              Rebuilt against the <strong>Broadcom Spring Enterprise</strong>{' '}
+              repository. The enterprise-only <strong>Spring Boot 2.7.33</strong>{' '}
+              patch line — past OSS end-of-life and unavailable on Maven Central —
+              closes the Spring CVEs, and every remaining library resolves to its
+              fixed version. Not one line of application code changed.
+            </p>
+          </>
+        ) : (
+          <>
+            <h1>
+              This application ships with{' '}
+              <span className="count">{animatedTotal}</span> known CVEs.
+            </h1>
+            <p className="lede">
+              Every dependency below is intentionally pinned to a vulnerable
+              version. Point your scanner — or the{' '}
+              <strong>Tanzu Application Catalog</strong> — at this build to watch
+              the findings light up, then rebuild against the{' '}
+              <strong>Broadcom Spring Enterprise</strong> repository to clear them.
+            </p>
+          </>
+        )}
+
+        {remediated && repository && (
+          <div className="repo-chip mono">↳ {repository}</div>
+        )}
+
         <div className="cta-row">
           <a className="btn" href="/api/dashboard" target="_blank" rel="noopener">
             CVE feed (JSON)
@@ -51,20 +82,28 @@ export default function Hero({ total, maxCvss }) {
         </div>
       </div>
 
-      <div className="score-card">
-        <div className="score-label">Max CVSS on this build</div>
+      <div className={`score-card ${remediated ? 'ok' : ''}`}>
+        <div className="score-label">
+          {remediated ? 'Active exposure' : 'Max CVSS on this build'}
+        </div>
         <div
-          className="score-ring"
+          className={`score-ring ${remediated ? 'ok' : ''}`}
           style={{ '--score': animatedScore.toFixed(2) }}
           role="img"
-          aria-label={`Maximum CVSS score ${maxCvss.toFixed(1)} out of 10`}
+          aria-label={
+            remediated
+              ? 'No active exposure'
+              : `Maximum CVSS score ${maxCvss.toFixed(1)} out of 10`
+          }
         >
           <div className="score-inner">
             <div className="score-num">{animatedScore.toFixed(1)}</div>
             <div className="score-of">/ 10</div>
           </div>
         </div>
-        <div className="score-note">CRITICAL EXPOSURE</div>
+        <div className={`score-note ${remediated ? 'ok' : ''}`}>
+          {remediated ? 'NO ACTIVE EXPOSURE' : 'CRITICAL EXPOSURE'}
+        </div>
       </div>
     </section>
   )

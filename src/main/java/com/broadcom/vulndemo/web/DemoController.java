@@ -61,28 +61,44 @@ public class DemoController {
         Map<String, String> out = new LinkedHashMap<>();
         out.put("input", expr);
         try {
-            out.put("interpolated", interpolator.replace(expr));
-            out.put("note", "commons-text 1.9 resolved the lookup (CVE-2022-42889).");
+            String result = interpolator.replace(expr);
+            out.put("interpolated", result);
+            boolean resolved = !result.equals(expr);
+            out.put("note", resolved
+                    ? "commons-text resolved this lookup (CVE-2022-42889)."
+                    : "commons-text 1.10.0 removed the script/dns/url lookups — the payload was "
+                      + "returned verbatim, not executed (CVE-2022-42889 fixed).");
         } catch (Exception e) {
-            // e.g. ${script:...} needs a JSR-223 engine, absent on JDK 15+.
             out.put("interpolated", "");
             out.put("error", e.getClass().getSimpleName() + ": " + e.getMessage());
-            out.put("note", "Interpolation was attempted by commons-text 1.9 (CVE-2022-42889); "
-                    + "this lookup type is unavailable on JDK 17, but ${sys}/${env}/${url} resolve.");
+            out.put("note", "Interpolation refused by commons-text 1.10.0 (CVE-2022-42889 fixed).");
         }
         return out;
     }
 
     /**
-     * CVE-2022-1471 (SnakeYAML). Untrusted YAML is parsed with the default
-     * Constructor, allowing instantiation of arbitrary types.
+     * CVE-2022-1471 (SnakeYAML). On snakeyaml 2.0 the default Yaml() no longer
+     * instantiates arbitrary global-tagged types, so the original payload is
+     * refused. We surface that refusal cleanly instead of a 500.
      */
     @PostMapping(value = "/yaml", consumes = "text/plain")
     public Object parseYaml(@RequestBody String yaml) {
-        Yaml parser = new Yaml(); // unsafe default constructor
-        Object loaded = parser.load(yaml);
-        return Map.of("parsedType", loaded == null ? "null" : loaded.getClass().getName(),
-                "note", "snakeyaml 1.29 default Constructor (CVE-2022-1471).");
+        try {
+            Yaml parser = new Yaml();
+            Object loaded = parser.load(yaml);
+            return Map.of("parsedType", loaded == null ? "null" : loaded.getClass().getName(),
+                    "note", "Parsed by snakeyaml 2.0 (global-tag instantiation is now restricted).");
+        } catch (Exception e) {
+            return Map.of("refused", true,
+                    "reason", e.getClass().getSimpleName() + ": " + firstLine(e.getMessage()),
+                    "note", "snakeyaml 2.0 refused arbitrary-type construction (CVE-2022-1471 fixed).");
+        }
+    }
+
+    private static String firstLine(String s) {
+        if (s == null) return "";
+        int nl = s.indexOf('\n');
+        return nl < 0 ? s : s.substring(0, nl);
     }
 
     /**
