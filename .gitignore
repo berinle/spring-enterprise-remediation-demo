@@ -10,6 +10,10 @@ frontend/dist/
 src/main/resources/static/assets/
 src/main/resources/static/index.html
 
+# Secrets — never commit the Broadcom registry token
+.env
+*.env
+
 # IDE / OS
 .idea/
 *.iml
