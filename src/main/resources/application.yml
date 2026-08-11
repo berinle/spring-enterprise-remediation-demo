@@ -1,0 +1,41 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: tanzu-vuln-demo
+  cloud:
+    function:
+      web:
+        # Keep the vulnerable Spring Cloud Function endpoints off the root path so
+        # they don't shadow the React SPA's static assets. The CVE-2022-22963
+        # demo therefore lives at /fn/functionRouter.
+        path: /fn
+  h2:
+    console:
+      enabled: true          # CVE-2021-42392 surface: H2 web console exposed
+      path: /h2-console
+      settings:
+        web-allow-others: true
+  datasource:
+    url: jdbc:h2:mem:vulndb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+# Actuator fully exposed on purpose (information disclosure / CVE-2023-20873 surface)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+    env:
+      show-values: always
+
+logging:
+  level:
+    root: INFO
+    com.broadcom.vulndemo: DEBUG

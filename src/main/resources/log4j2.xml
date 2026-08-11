@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  log4j2 configuration for the DemoController's direct logger. Intentionally uses
+  a message pattern that performs lookups (%m) on log4j-core 2.14.1, preserving
+  the CVE-2021-44228 (Log4Shell) code path for the demo.
+-->
+<Configuration status="WARN">
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %m%n"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Logger name="com.broadcom.vulndemo" level="debug" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+        <Root level="info">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>
