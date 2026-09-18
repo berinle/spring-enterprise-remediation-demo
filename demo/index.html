@@ -1016,7 +1016,6 @@ table.score col.hl{background:rgba(109,179,63,.055)}
   function go(n){
     if (n < 0) n = scenes.length - 1;
     if (n >= scenes.length) n = 0;
-    if (n === idx && scenes[n].classList.contains("is-active") && elapsed === 0) return;
     reset(scenes[idx]);
     scenes[idx].classList.remove("is-active");
     idx = n;

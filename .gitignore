@@ -19,3 +19,6 @@ src/main/resources/static/index.html
 *.iml
 .vscode/
 .DS_Store
+
+# the rendered demo video (57MB) - regenerate with demo/record-demo.mjs + encode-mp4.swift
+demo/*.mp4
