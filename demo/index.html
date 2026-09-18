@@ -1,0 +1,1087 @@
+<title>The Unpatchable Patch</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+/* ============================================================
+   THE UNPATCHABLE PATCH — a recordable, self-running demo
+   Committed single-theme design: a dark "control room" look,
+   so the recording is identical whatever theme the viewer runs.
+   Every colour is painted explicitly from the token set below.
+   ============================================================ */
+
+:root{
+  /* ground + surfaces: blue-black with a deliberate green bias */
+  --ground:#0A0F12;
+  --ground-2:#0D1418;
+  --surface:#121B20;
+  --surface-2:#18242A;
+  --line:rgba(140,190,160,.16);
+  --line-strong:rgba(140,190,160,.30);
+
+  /* ink: off-white carrying the same green bias */
+  --ink:#E8F0EA;
+  --ink-2:#AFC2B8;
+  --muted:#758A80;
+
+  /* accent: the actual Spring green */
+  --spring:#6DB33F;
+  --spring-bright:#8FE05A;
+  --spring-dim:rgba(109,179,63,.14);
+
+  /* semantics, separate from the accent */
+  --crit:#E5484D;
+  --crit-dim:rgba(229,72,77,.13);
+  --warn:#F0A227;
+  --warn-dim:rgba(240,162,39,.13);
+  --hub:#4A9BD8;            /* Tanzu Hub chrome blue */
+  --hub-dim:rgba(74,155,216,.13);
+
+  --display:'Archivo','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --body:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:
+    radial-gradient(1100px 620px at 78% -8%, rgba(109,179,63,.10), transparent 62%),
+    radial-gradient(900px 560px at 8% 108%, rgba(74,155,216,.09), transparent 60%),
+    var(--ground);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+body.is-scroll{overflow:auto}
+
+/* ---------------- shell ---------------- */
+.shell{display:flex;flex-direction:column;height:100%;min-height:0}
+
+.rail{
+  display:flex;align-items:center;gap:14px;
+  padding:10px 20px;padding-top:calc(10px + env(safe-area-inset-top,0px));
+  border-bottom:1px solid var(--line);
+  background:rgba(10,15,18,.82);
+  backdrop-filter:blur(8px);
+  flex:0 0 auto;
+}
+.mark{display:flex;align-items:center;gap:9px;font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.055em;text-transform:uppercase}
+.mark .leaf{width:17px;height:17px;flex:0 0 auto}
+.rail .sep{width:1px;height:16px;background:var(--line-strong);flex:0 0 auto}
+.act-tag{
+  font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.act-tag b{color:var(--ink-2);font-weight:500}
+.rail .right{margin-left:auto;display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.hint{font-family:var(--mono);font-size:10px;letter-spacing:.09em;color:var(--muted);text-transform:uppercase}
+@media(max-width:720px){.hint{display:none}}
+
+/* ---------------- stage ---------------- */
+.stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden}
+.scene{
+  position:absolute;inset:0;
+  overflow-y:auto;overflow-x:hidden;
+  padding:clamp(18px,3.4vh,40px) clamp(16px,4vw,64px);
+  opacity:0;visibility:hidden;
+  transform:translateY(14px);
+  transition:opacity .62s ease,transform .62s cubic-bezier(.22,.68,.32,1),visibility 0s linear .62s;
+  display:flex;flex-direction:column;justify-content:center;
+}
+.scene.is-active{opacity:1;visibility:visible;transform:none;transition-delay:0s,0s,0s}
+.scene-inner{width:100%;max-width:1320px;margin:0 auto;flex:0 0 auto}
+
+/* ---------------- type ---------------- */
+.eyebrow{
+  font-family:var(--mono);font-size:10.5px;font-weight:500;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--spring);
+  display:flex;align-items:center;gap:10px;margin:0 0 14px
+}
+.eyebrow::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,var(--line-strong),transparent);max-width:220px}
+.eyebrow.is-crit{color:var(--crit)}
+.eyebrow.is-hub{color:var(--hub)}
+
+h1.big{
+  font-family:var(--display);font-weight:800;
+  font-size:clamp(30px,4.6vw,62px);line-height:1.02;letter-spacing:-.024em;
+  margin:0 0 18px;text-wrap:balance;color:var(--ink)
+}
+h2.head{
+  font-family:var(--display);font-weight:700;
+  font-size:clamp(23px,2.9vw,40px);line-height:1.06;letter-spacing:-.02em;
+  margin:0 0 12px;text-wrap:balance;color:var(--ink)
+}
+.lede{font-size:clamp(14px,1.28vw,18px);line-height:1.58;color:var(--ink-2);max-width:62ch;margin:0 0 20px}
+.lede strong{color:var(--ink);font-weight:600}
+.lede .grn{color:var(--spring-bright);font-weight:600}
+.lede .red{color:var(--crit);font-weight:600}
+.kicker{
+  font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);
+  margin:16px 0 0;line-height:1.7
+}
+
+/* ---------------- layout helpers ---------------- */
+.split{display:grid;gap:clamp(18px,2.4vw,36px);align-items:center}
+.split.c-6-6{grid-template-columns:1fr 1fr}
+.split.c-7-5{grid-template-columns:1.32fr 1fr}
+.split.c-5-7{grid-template-columns:1fr 1.32fr}
+@media(max-width:900px){.split.c-6-6,.split.c-7-5,.split.c-5-7{grid-template-columns:1fr}}
+
+/* ---------------- KPI tiles ---------------- */
+.kpis{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(138px,1fr))}
+.kpi{
+  border:1px solid var(--line);border-radius:3px;
+  background:linear-gradient(180deg,var(--surface),var(--ground-2));
+  padding:13px 14px 14px;position:relative;overflow:hidden;
+  opacity:0;transform:translateY(10px)
+}
+.scene.is-active .kpi{opacity:1;transform:none;transition:opacity .5s ease,transform .5s cubic-bezier(.22,.68,.32,1)}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--muted)}
+.kpi.t-crit::before{background:var(--crit)}
+.kpi.t-warn::before{background:var(--warn)}
+.kpi.t-good::before{background:var(--spring)}
+.kpi.t-hub::before{background:var(--hub)}
+.kpi .k-label{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted);line-height:1.45;min-height:2.9em;display:block
+}
+.kpi .k-val{
+  font-family:var(--display);font-weight:700;font-size:clamp(28px,3.4vw,44px);
+  line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums;
+  display:block;margin-top:7px;color:var(--ink)
+}
+.kpi.t-crit .k-val{color:var(--crit)}
+.kpi.t-warn .k-val{color:var(--warn)}
+.kpi.t-good .k-val{color:var(--spring-bright)}
+.kpi.t-hub .k-val{color:var(--hub)}
+.kpi .k-val .suf{font-size:.44em;letter-spacing:0;margin-left:3px;color:var(--muted);font-weight:600}
+.kpi .k-delta{
+  font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--muted);
+  margin-top:6px;display:block
+}
+.kpi .k-delta .was{text-decoration:line-through;opacity:.7}
+.kpi .k-delta .now{color:var(--spring-bright)}
+
+/* ---------------- browser / app frame ---------------- */
+.browser{
+  border:1px solid var(--line-strong);border-radius:5px;overflow:hidden;
+  background:var(--ground-2);box-shadow:0 22px 54px -26px rgba(0,0,0,.9);
+  display:flex;flex-direction:column;min-width:0
+}
+.browser .chrome{
+  display:flex;align-items:center;gap:9px;padding:8px 11px;
+  background:var(--surface-2);border-bottom:1px solid var(--line);flex:0 0 auto
+}
+.dots{display:flex;gap:5px;flex:0 0 auto}
+.dots i{width:8px;height:8px;border-radius:50%;background:var(--line-strong);display:block}
+.addr{
+  flex:1;min-width:0;font-family:var(--mono);font-size:10.5px;color:var(--ink-2);
+  background:var(--ground);border:1px solid var(--line);border-radius:3px;
+  padding:4px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.addr .lock{color:var(--spring);margin-right:6px}
+.pop{
+  flex:0 0 auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-2);text-decoration:none;border:1px solid var(--line-strong);
+  border-radius:3px;padding:4px 8px;transition:all .18s ease;white-space:nowrap
+}
+.pop:hover,.pop:focus-visible{color:var(--ground);background:var(--spring);border-color:var(--spring)}
+.viewport{position:relative;aspect-ratio:16/10.4;width:100%;background:var(--ground);overflow:hidden}
+.viewport img{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;object-position:center top;display:block;max-width:100%;
+  transform:scale(1.005);transform-origin:50% 0;
+  transition:transform 11s linear
+}
+.scene.is-active .viewport img{transform:scale(1.07)}
+.viewport .sheen{
+  position:absolute;inset:0;pointer-events:none;z-index:2;
+  background:linear-gradient(180deg,transparent 62%,rgba(10,15,18,.5))
+}
+.browser.b-crit{border-color:rgba(229,72,77,.34)}
+.browser.b-good{border-color:rgba(109,179,63,.34)}
+.browser .stat{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:8px 11px;border-top:1px solid var(--line);background:var(--surface-2)
+}
+.badge{
+  font-family:var(--mono);font-size:9px;letter-spacing:.11em;text-transform:uppercase;
+  padding:3px 7px;border-radius:2px;white-space:nowrap;flex:0 0 auto;font-weight:500
+}
+.badge.b-crit{background:var(--crit-dim);color:var(--crit);border:1px solid rgba(229,72,77,.35)}
+.badge.b-good{background:var(--spring-dim);color:var(--spring-bright);border:1px solid rgba(109,179,63,.4)}
+.badge.b-hub{background:var(--hub-dim);color:var(--hub);border:1px solid rgba(74,155,216,.35)}
+.badge.b-plain{background:transparent;color:var(--muted);border:1px solid var(--line-strong)}
+@media(prefers-reduced-motion:reduce){.scene.is-active .viewport img{transform:scale(1.005)}}
+
+/* ---------------- hub screenshot frame ---------------- */
+.shot{
+  position:relative;overflow:hidden;border:1px solid var(--line-strong);border-radius:5px;
+  background:#fff;aspect-ratio:16/9.6;box-shadow:0 22px 54px -26px rgba(0,0,0,.9)
+}
+.shot img{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:left top;
+  transform:scale(var(--z,2));transform-origin:var(--fx,50%) var(--fy,30%);
+  transition:transform 9s linear;display:block;max-width:100%
+}
+.scene.is-active .shot img{transform:scale(calc(var(--z,2) * 1.07))}
+.shot .glass{
+  position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(10,15,18,.06),rgba(10,15,18,.34))
+}
+.shot .tag{
+  position:absolute;left:10px;bottom:10px;z-index:3;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  background:rgba(10,15,18,.88);color:var(--ink-2);border:1px solid var(--line-strong);
+  border-radius:2px;padding:4px 8px;backdrop-filter:blur(4px)
+}
+.shot .scanline{
+  position:absolute;left:0;right:0;height:2px;z-index:2;
+  background:linear-gradient(90deg,transparent,var(--spring-bright),transparent);
+  opacity:0;top:0
+}
+.scene.is-active .shot .scanline{animation:scan 3.4s cubic-bezier(.4,0,.2,1) .35s 1 forwards}
+@keyframes scan{0%{opacity:0;top:2%}12%{opacity:.85}88%{opacity:.5}100%{opacity:0;top:98%}}
+
+/* ---------------- terminal ---------------- */
+.term{
+  border:1px solid var(--line-strong);border-radius:4px;overflow:hidden;
+  background:#070B0D;font-family:var(--mono);box-shadow:0 18px 44px -24px rgba(0,0,0,.9)
+}
+.term .bar{
+  display:flex;align-items:center;gap:8px;padding:7px 11px;
+  background:var(--surface-2);border-bottom:1px solid var(--line)
+}
+.term .bar span{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.term pre{
+  margin:0;padding:13px 14px;font-size:clamp(10.5px,.92vw,13px);line-height:1.72;
+  color:var(--ink-2);white-space:pre-wrap;word-break:break-word;min-height:var(--th,150px)
+}
+.term .p{color:var(--spring)}
+.term .c{color:var(--ink);font-weight:500}
+.term .ok{color:var(--spring-bright)}
+.term .er{color:var(--crit)}
+.term .wn{color:var(--warn)}
+.term .dim{color:var(--muted)}
+.caret{display:inline-block;width:7px;height:1.05em;background:var(--spring-bright);vertical-align:-.16em;animation:blink 1.05s steps(2,start) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* ---------------- diff ---------------- */
+.diff{
+  border:1px solid var(--line-strong);border-radius:4px;overflow:hidden;background:#070B0D;
+  font-family:var(--mono);font-size:clamp(10.5px,.94vw,13.5px);line-height:1.78;
+  box-shadow:0 18px 44px -24px rgba(0,0,0,.9)
+}
+.diff .bar{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 12px;
+  background:var(--surface-2);border-bottom:1px solid var(--line);
+  font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)
+}
+.diff .bar b{color:var(--ink-2);font-weight:500;text-transform:none;letter-spacing:.02em}
+.diff .rows{padding:9px 0;max-height:min(48vh,420px);overflow:auto}
+.dl{display:flex;gap:10px;padding:1px 12px;opacity:0;transform:translateX(-7px);white-space:pre-wrap;word-break:break-word}
+.dl.in{opacity:1;transform:none;transition:opacity .3s ease,transform .3s ease}
+.dl .g{flex:0 0 auto;width:9px;text-align:center;color:var(--muted);user-select:none}
+.dl .t{flex:1;min-width:0;color:var(--ink-2)}
+.dl.minus{background:var(--crit-dim)} .dl.minus .g,.dl.minus .t{color:var(--crit)}
+.dl.plus{background:var(--spring-dim)} .dl.plus .g,.dl.plus .t{color:var(--spring-bright)}
+.dl.note .t{color:var(--muted)}
+
+/* ---------------- runway bars ---------------- */
+.runway{display:flex;flex-direction:column;gap:18px;margin-top:6px}
+.run{display:grid;grid-template-columns:minmax(0,190px) 1fr;gap:14px;align-items:center}
+@media(max-width:700px){.run{grid-template-columns:1fr;gap:6px}}
+.run .who{font-family:var(--display);font-weight:600;font-size:clamp(13px,1.3vw,17px);line-height:1.25}
+.run .who small{display:block;font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.07em;color:var(--muted);margin-top:3px;text-transform:uppercase}
+.run .track{position:relative;height:38px;background:var(--surface);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.run .fill{
+  position:absolute;left:0;top:0;bottom:0;width:0;
+  transition:width 1.5s cubic-bezier(.22,.68,.32,1);
+  display:flex;align-items:center;justify-content:flex-end;padding-right:11px
+}
+.run .fill.f-dead{background:linear-gradient(90deg,rgba(229,72,77,.5),rgba(229,72,77,.2))}
+.run .fill.f-ent{background:linear-gradient(90deg,rgba(109,179,63,.55),rgba(109,179,63,.16))}
+.run .fill.f-oss{background:linear-gradient(90deg,rgba(74,155,216,.5),rgba(74,155,216,.16))}
+.run .fill b{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--ink);white-space:nowrap}
+.run .zero{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:11px;color:var(--crit);letter-spacing:.06em}
+
+/* ---------------- version leap ---------------- */
+.leap{display:flex;flex-direction:column;gap:7px;margin-top:4px}
+.lp{
+  display:grid;grid-template-columns:minmax(0,1.5fr) auto minmax(0,1fr) auto minmax(0,1fr);
+  gap:10px;align-items:center;padding:8px 11px;border:1px solid var(--line);border-radius:3px;
+  background:var(--surface);opacity:0;transform:translateY(8px)
+}
+.scene.is-active .lp{opacity:1;transform:none;transition:opacity .45s ease,transform .45s cubic-bezier(.22,.68,.32,1)}
+.lp .lib{font-family:var(--mono);font-size:clamp(10px,.88vw,12px);color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp .from{font-family:var(--mono);font-size:clamp(10px,.88vw,12.5px);color:var(--crit);text-align:right;font-variant-numeric:tabular-nums}
+.lp .to{font-family:var(--mono);font-size:clamp(10px,.88vw,12.5px);color:var(--spring-bright);font-weight:500;font-variant-numeric:tabular-nums}
+.lp .arw{color:var(--muted);font-family:var(--mono);font-size:11px}
+@media(max-width:620px){
+  .lp{grid-template-columns:1fr auto 1fr;row-gap:4px}
+  .lp .lib{grid-column:1/-1}
+}
+
+/* ---------------- scorecard ---------------- */
+.card-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:4px;background:var(--ground-2)}
+table.score{border-collapse:collapse;width:100%;min-width:660px;font-variant-numeric:tabular-nums}
+table.score th,table.score td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line)}
+table.score thead th{
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);font-weight:500;background:var(--surface);vertical-align:bottom;line-height:1.5
+}
+table.score thead th b{display:block;font-family:var(--display);font-size:14px;letter-spacing:-.01em;text-transform:none;color:var(--ink);font-weight:700;margin-bottom:2px}
+table.score tbody th{
+  font-family:var(--body);font-weight:500;font-size:13px;color:var(--ink-2);width:30%
+}
+table.score td{font-family:var(--mono);font-size:14px;color:var(--ink);font-weight:500}
+table.score td.v-bad{color:var(--crit)} table.score td.v-warn{color:var(--warn)} table.score td.v-good{color:var(--spring-bright)}
+table.score tbody tr:last-child th,table.score tbody tr:last-child td{border-bottom:0}
+table.score tbody tr{opacity:0}
+.scene.is-active table.score tbody tr{opacity:1;transition:opacity .45s ease}
+table.score col.hl{background:rgba(109,179,63,.055)}
+
+/* ---------------- route chips ---------------- */
+.routes{display:grid;gap:9px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin-top:22px}
+.route{
+  display:flex;align-items:center;gap:11px;padding:11px 13px;text-decoration:none;
+  border:1px solid var(--line);border-radius:3px;background:var(--surface);
+  transition:border-color .2s ease,transform .2s ease,background .2s ease;min-width:0
+}
+.route:hover,.route:focus-visible{border-color:var(--line-strong);transform:translateY(-2px);background:var(--surface-2)}
+.route .pip{width:7px;height:7px;border-radius:50%;flex:0 0 auto;position:relative}
+.route .pip::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1px solid currentColor;opacity:.4;animation:pulse 2.4s ease-out infinite}
+@keyframes pulse{0%{transform:scale(.6);opacity:.6}100%{transform:scale(1.5);opacity:0}}
+.route.r-bad .pip{background:var(--crit);color:var(--crit)}
+.route.r-mid .pip{background:var(--warn);color:var(--warn)}
+.route.r-good .pip{background:var(--spring);color:var(--spring)}
+.route .txt{min-width:0;flex:1}
+.route .nm{font-family:var(--display);font-weight:600;font-size:13px;color:var(--ink);letter-spacing:-.005em}
+.route .ur{font-family:var(--mono);font-size:9.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.route .go{font-family:var(--mono);font-size:12px;color:var(--muted);flex:0 0 auto}
+
+/* ---------------- callout ---------------- */
+.callout{
+  border-left:2px solid var(--spring);background:var(--spring-dim);
+  padding:13px 16px;border-radius:0 3px 3px 0;margin-top:18px
+}
+.callout.c-crit{border-left-color:var(--crit);background:var(--crit-dim)}
+.callout.c-hub{border-left-color:var(--hub);background:var(--hub-dim)}
+.callout p{margin:0;font-size:clamp(13px,1.15vw,16px);line-height:1.55;color:var(--ink)}
+.callout .lbl{
+  display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:6px
+}
+
+/* ---------------- transport ---------------- */
+.transport{
+  flex:0 0 auto;border-top:1px solid var(--line);background:rgba(10,15,18,.92);
+  backdrop-filter:blur(8px);
+  padding-bottom:env(safe-area-inset-bottom,0px)
+}
+.progress{height:2px;background:var(--surface-2);position:relative;overflow:hidden}
+.progress .bar{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--spring);will-change:width}
+.controls{display:flex;align-items:center;gap:8px;padding:9px 20px}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  background:transparent;border:1px solid var(--line-strong);color:var(--ink-2);
+  border-radius:3px;padding:6px 10px;cursor:pointer;
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  transition:all .17s ease
+}
+.btn:hover{border-color:var(--spring);color:var(--spring-bright)}
+.btn:focus-visible{outline:2px solid var(--spring-bright);outline-offset:2px}
+.btn.primary{background:var(--spring);border-color:var(--spring);color:#071009;font-weight:700}
+.btn.primary:hover{background:var(--spring-bright);border-color:var(--spring-bright);color:#071009}
+.dots-nav{display:flex;gap:5px;margin-left:6px;flex-wrap:wrap}
+.dot{
+  width:20px;height:5px;border-radius:1px;border:0;padding:0;cursor:pointer;
+  background:var(--surface-2);transition:background .2s ease
+}
+.dot:hover{background:var(--line-strong)}
+.dot.on{background:var(--spring)}
+.dot:focus-visible{outline:2px solid var(--spring-bright);outline-offset:2px}
+.counter{
+  margin-left:auto;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
+  color:var(--muted);font-variant-numeric:tabular-nums;flex:0 0 auto
+}
+@media(max-width:640px){
+  .controls{flex-wrap:wrap;gap:6px;padding:8px 16px}
+  .dots-nav{order:3;width:100%;margin-left:0}
+  .counter{margin-left:auto}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .scene.is-active .shot img{transform:scale(var(--z,2))}
+}
+</style>
+
+<div class="shell">
+
+  <header class="rail">
+    <div class="mark">
+      <svg class="leaf" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M20.5 3.2c-1.1 5.4-4.4 7.1-8.2 8.5C9.6 12.7 7.4 14 6.4 16.6c-.5 1.3-.5 2.6-.3 3.6C4.5 18.4 3 15.4 3 12.4 3 7 7.4 3.4 13 3.2c2.8-.1 5-.6 7.5 0z" fill="#6DB33F"/>
+        <path d="M6.1 20.2c2-4.9 6-6.4 9.4-7.8" stroke="#0A0F12" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      </svg>
+      Spring Enterprise
+    </div>
+    <div class="sep"></div>
+    <div class="act-tag" id="actTag">Cold open &nbsp;·&nbsp; <b>The version that isn't there</b></div>
+    <div class="right">
+      <span class="hint">space&nbsp;play/pause &nbsp;·&nbsp; ←→&nbsp;scene &nbsp;·&nbsp; f&nbsp;fullscreen</span>
+    </div>
+  </header>
+
+  <main class="stage" id="stage">
+
+    <!-- ========== 0 · COLD OPEN ========== -->
+    <section class="scene is-active" data-dur="14000">
+      <div class="scene-inner">
+        <p class="eyebrow">Tanzu Platform &nbsp;/&nbsp; Broadcom Spring Enterprise</p>
+        <h1 class="big">Some patches don't exist in public.</h1>
+        <p class="lede">
+          A Spring Boot <strong>2.6.3</strong> app is running in production with <span class="red">12 known CVEs</span>,
+          four of them critical. The release that closes the Spring&#8209;owned ones is <strong>Boot 2.7.33</strong> —
+          and it is past open&#8209;source end of life. It is not on Maven Central. It never will be.
+        </p>
+        <p class="lede">
+          Here is the same application, three times over: <span class="red">vulnerable</span>,
+          <span class="grn">patched from the enterprise repository</span>, and
+          <span class="grn">modernised to Boot 4.1</span> — all live, all in Tanzu Hub.
+        </p>
+
+        <div class="routes">
+          <a class="route r-bad" href="https://tanzu-vuln-demo-b2caca.apps.tas-ndc.kuhn-labs.com" target="_blank" rel="noopener">
+            <span class="pip"></span>
+            <span class="txt"><span class="nm">Vulnerable · Boot 2.6.3</span><span class="ur">tanzu-vuln-demo-b2caca.apps.tas-ndc.kuhn-labs.com</span></span>
+            <span class="go">&#8599;</span>
+          </a>
+          <a class="route r-mid" href="https://vuln-demo-patched.apps.tas-ndc.kuhn-labs.com" target="_blank" rel="noopener">
+            <span class="pip"></span>
+            <span class="txt"><span class="nm">Patched · Boot 2.7.33</span><span class="ur">vuln-demo-patched.apps.tas-ndc.kuhn-labs.com</span></span>
+            <span class="go">&#8599;</span>
+          </a>
+          <a class="route r-good" href="https://tanzu-vuln-demo-oss4x.apps.tas-ndc.kuhn-labs.com" target="_blank" rel="noopener">
+            <span class="pip"></span>
+            <span class="txt"><span class="nm">Modernised · Boot 4.1.0</span><span class="ur">tanzu-vuln-demo-oss4x.apps.tas-ndc.kuhn-labs.com</span></span>
+            <span class="go">&#8599;</span>
+          </a>
+        </div>
+
+        <p class="kicker">Hub: tanzu-hub.kuhn-labs.com &nbsp;·&nbsp; space to pause at any point</p>
+      </div>
+    </section>
+
+    <!-- ========== 1 · THE VULNERABLE APP ========== -->
+    <section class="scene" data-dur="20000">
+      <div class="scene-inner">
+        <p class="eyebrow is-crit">Act I &nbsp;·&nbsp; The application</p>
+        <div class="split c-6-6">
+          <div>
+            <h2 class="head">It ships its own rap sheet.</h2>
+            <p class="lede">
+              The dashboard isn't a mock-up. It is generated from the versions pinned in <code style="font-family:var(--mono);color:var(--ink)">pom.xml</code>,
+              so what the page advertises is exactly what a scanner will find — and every card fires a
+              <strong>real request</strong> at the endpoint behind it.
+            </p>
+            <div class="term" style="--th:132px">
+              <div class="bar"><span class="er">&#9679;</span><span>live exploit console</span></div>
+              <pre data-type='<span class="p">$</span> <span class="c">curl "$APP/api/log?msg=%24%7Bjndi:ldap://x%7D"</span>\n<span class="wn">WARN</span> log4j-core <span class="er">2.14.1</span> — JNDI lookup evaluated\n<span class="er">CVE-2021-44228</span>  Log4Shell          <span class="er">CVSS 10.0</span>\n\n<span class="p">$</span> <span class="c">curl -X POST "$APP/fn/functionRouter" -d "T(java.lang.Runtime)"</span>\n<span class="er">CVE-2022-22963</span>  SpEL RCE           <span class="er">CVSS 9.8</span>'></pre>
+            </div>
+            <p class="kicker">Boot 2.6.3 · Framework 5.3.15 · Security 5.6.1 · Java 17</p>
+          </div>
+
+          <div class="browser b-crit">
+            <div class="chrome">
+              <span class="dots"><i></i><i></i><i></i></span>
+              <span class="addr"><span class="lock">&#128274;</span>tanzu-vuln-demo-b2caca.apps.tas-ndc.kuhn-labs.com</span>
+              <a class="pop" href="https://tanzu-vuln-demo-b2caca.apps.tas-ndc.kuhn-labs.com" target="_blank" rel="noopener">Open &#8599;</a>
+            </div>
+            <div class="viewport">
+              <img src="apps/app-vulnerable.jpg" alt="The running vulnerable application: 12 known CVEs, max CVSS 10.0, 4 critical, 5 high, 3 medium">
+              <div class="sheen"></div>
+            </div>
+            <div class="stat">
+              <span class="badge b-crit">Max CVSS 10.0</span>
+              <span class="badge b-plain">4 critical</span>
+              <span class="badge b-plain">5 high</span>
+              <span class="badge b-plain">3 medium</span>
+              <span class="badge b-plain">Boot 2.6.3</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 2 · HUB SEES IT ========== -->
+    <section class="scene" data-dur="17000">
+      <div class="scene-inner">
+        <p class="eyebrow is-hub">Act I &nbsp;·&nbsp; Tanzu Hub &nbsp;/&nbsp; tanzu-vuln-demo</p>
+        <div class="split c-7-5">
+          <div class="shot" style="--z:2.2;--fx:57%;--fy:38%">
+            <img src="shots/hub-vuln-overview.jpg" alt="Tanzu Hub overview for tanzu-vuln-demo showing 15 critical or high CVEs in the Vulnerability Remediation card">
+            <div class="glass"></div>
+            <div class="scanline"></div>
+            <div class="tag">Hub &#8250; Apps &#8250; tanzu-vuln-demo &#8250; Overview</div>
+          </div>
+          <div>
+            <h2 class="head">Nobody had to configure a scan.</h2>
+            <p class="lede">
+              Hub reads the bill of materials off the <strong>running droplet</strong>. The app was pushed,
+              and the Vulnerability Remediation card filled itself in.
+            </p>
+            <div class="kpis" style="grid-template-columns:1fr 1fr">
+              <div class="kpi t-crit">
+                <span class="k-label">Critical / High CVEs</span>
+                <span class="k-val" data-count="15">0</span>
+              </div>
+              <div class="kpi t-good">
+                <span class="k-label">Upgrades fix</span>
+                <span class="k-val"><span data-count="100">0</span><span class="suf">% of CVEs</span></span>
+              </div>
+            </div>
+            <div class="callout c-hub">
+              <span class="lbl">The catch</span>
+              <p>Hub says upgrades fix <strong>100%</strong> of them. It does not say those upgrades are reachable.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 3 · THE WALL ========== -->
+    <section class="scene" data-dur="21000">
+      <div class="scene-inner">
+        <p class="eyebrow is-crit">Act I &nbsp;·&nbsp; The end-of-life wall</p>
+        <h2 class="head">Twenty-two Spring libraries. Twenty-two past OSS support.</h2>
+        <div class="kpis" style="margin:16px 0 14px">
+          <div class="kpi"><span class="k-label">Total Spring libraries</span><span class="k-val" data-count="22">0</span></div>
+          <div class="kpi t-crit"><span class="k-label">From Spring Enterprise</span><span class="k-val" data-count="0">0</span></div>
+          <div class="kpi t-warn"><span class="k-label">Out of Enterprise support</span><span class="k-val" data-count="10">0</span></div>
+          <div class="kpi t-crit"><span class="k-label">Out of OSS support</span><span class="k-val" data-count="22">0</span></div>
+          <div class="kpi t-crit"><span class="k-label">With vulnerabilities</span><span class="k-val" data-count="17">0</span></div>
+        </div>
+        <div class="split c-5-7" style="align-items:start">
+          <div>
+            <p class="lede" style="margin-bottom:0">
+              Hub's own recommendation is <strong>spring-boot 2.6.3 &rarr; 2.7.x</strong>. Run it and Maven fails:
+              the 2.7 patch line stopped publishing to Maven Central at OSS end of life.
+              The fix exists. Your build just can't see it.
+            </p>
+            <div class="callout c-crit">
+              <span class="lbl">Where most teams stop</span>
+              <p>The choice becomes <strong>a framework-major rewrite</strong> or <strong>a risk-acceptance memo</strong>. Both are expensive. Both take quarters.</p>
+            </div>
+          </div>
+          <div class="shot" style="--z:2;--fx:44%;--fy:32%">
+            <img src="shots/hub-vuln-recommendations.jpg" alt="Tanzu Hub recommendations tab listing 22 Spring libraries, 0 from Spring Enterprise, 17 with vulnerabilities">
+            <div class="glass"></div>
+            <div class="scanline"></div>
+            <div class="tag">Hub &#8250; tanzu-vuln-demo &#8250; Recommendations</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 4 · THE FIX ========== -->
+    <section class="scene" data-dur="22000">
+      <div class="scene-inner">
+        <p class="eyebrow">Act II &nbsp;·&nbsp; The remediation</p>
+        <div class="split c-6-6" style="align-items:start">
+          <div>
+            <h2 class="head">One file. One line that matters.</h2>
+            <p class="lede">
+              Entitlement to <strong>Broadcom Spring Enterprise</strong> puts <span class="grn">2.7.33</span> back on the
+              shelf — a supported patch release for a line the open-source world has closed. Point Maven at
+              <code style="font-family:var(--mono);color:var(--ink)">tanzu-maven</code>, bump the parent, and the Boot BOM drags
+              patched Framework, Security, Jackson and H2 along behind it.
+            </p>
+            <div class="term" style="--th:126px">
+              <div class="bar"><span class="ok">&#9679;</span><span>~/.m2/settings.xml &amp; build</span></div>
+              <pre data-type='<span class="dim">&lt;repository&gt;</span>\n  <span class="dim">&lt;id&gt;</span><span class="c">tanzu-maven</span><span class="dim">&lt;/id&gt;</span>\n  <span class="dim">&lt;url&gt;</span><span class="c">https://packages.broadcom.com/artifactory/tanzu-maven</span><span class="dim">&lt;/url&gt;</span>\n<span class="dim">&lt;/repository&gt;</span>\n\n<span class="p">$</span> <span class="c">mvn clean package</span>\n<span class="ok">BUILD SUCCESS</span> <span class="dim">— resolved spring-boot-starter-parent:2.7.33</span>'></pre>
+            </div>
+            <div class="callout">
+              <span class="lbl">The whole change</span>
+              <p><strong>1 file changed.</strong> Zero lines of application code. No controller, no config class, no test touched.</p>
+            </div>
+          </div>
+
+          <div class="diff">
+            <div class="bar"><span>git diff main patched-enterprise</span><b>pom.xml</b></div>
+            <div class="rows" data-diff>
+              <div class="dl" data-g=" " data-t="&lt;parent&gt;"></div>
+              <div class="dl" data-g=" " data-t="    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;"></div>
+              <div class="dl" data-g=" " data-t="    &lt;artifactId&gt;spring-boot-starter-parent&lt;/artifactId&gt;"></div>
+              <div class="dl minus" data-g="-" data-t="    &lt;version&gt;2.6.3&lt;/version&gt;"></div>
+              <div class="dl plus" data-g="+" data-t="    &lt;version&gt;2.7.33&lt;/version&gt;"></div>
+              <div class="dl" data-g=" " data-t="&lt;/parent&gt;"></div>
+              <div class="dl" data-g=" " data-t=" "></div>
+              <div class="dl" data-g=" " data-t="&lt;properties&gt;"></div>
+              <div class="dl plus" data-g="+" data-t="    &lt;log4j2.version&gt;2.17.1&lt;/log4j2.version&gt;"></div>
+              <div class="dl plus" data-g="+" data-t="    &lt;snakeyaml.version&gt;2.0&lt;/snakeyaml.version&gt;"></div>
+              <div class="dl" data-g=" " data-t="&lt;/properties&gt;"></div>
+              <div class="dl" data-g=" " data-t=" "></div>
+              <div class="dl note" data-g=" " data-t="&lt;!-- pinned CVE versions: now managed by the BOM --&gt;"></div>
+              <div class="dl minus" data-g="-" data-t="    &lt;version&gt;3.2.2&lt;/version&gt;   &lt;!-- spring-cloud-function-web --&gt;"></div>
+              <div class="dl minus" data-g="-" data-t="    &lt;version&gt;2.14.1&lt;/version&gt;  &lt;!-- log4j-core --&gt;"></div>
+              <div class="dl minus" data-g="-" data-t="    &lt;version&gt;1.29&lt;/version&gt;    &lt;!-- snakeyaml --&gt;"></div>
+              <div class="dl minus" data-g="-" data-t="    &lt;version&gt;1.9&lt;/version&gt;     &lt;!-- commons-text --&gt;"></div>
+              <div class="dl plus" data-g="+" data-t="    &lt;version&gt;1.10.0&lt;/version&gt;  &lt;!-- commons-text --&gt;"></div>
+              <div class="dl minus" data-g="-" data-t="    &lt;version&gt;3.2.1&lt;/version&gt;   &lt;!-- commons-collections --&gt;"></div>
+              <div class="dl plus" data-g="+" data-t="    &lt;version&gt;3.2.2&lt;/version&gt;   &lt;!-- commons-collections --&gt;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 5 · PATCHED IN HUB ========== -->
+    <section class="scene" data-dur="24000">
+      <div class="scene-inner">
+        <p class="eyebrow is-hub">Act II &nbsp;·&nbsp; Tanzu Hub &nbsp;/&nbsp; vuln-demo-patched</p>
+        <h2 class="head">Same 22 libraries. Eighteen now carry a support contract.</h2>
+        <div class="kpis" style="margin:16px 0 14px">
+          <div class="kpi"><span class="k-label">Total Spring libraries</span><span class="k-val" data-count="22">0</span></div>
+          <div class="kpi t-good"><span class="k-label">From Spring Enterprise</span><span class="k-val" data-count="18">0</span><span class="k-delta"><span class="was">0</span> &rarr; <span class="now">18</span></span></div>
+          <div class="kpi t-good"><span class="k-label">Out of Enterprise support</span><span class="k-val" data-count="0">0</span><span class="k-delta"><span class="was">10</span> &rarr; <span class="now">0</span></span></div>
+          <div class="kpi t-warn"><span class="k-label">Out of OSS support</span><span class="k-val" data-count="22">0</span><span class="k-delta">unchanged — and no longer the point</span></div>
+          <div class="kpi t-warn"><span class="k-label">With vulnerabilities</span><span class="k-val" data-count="5">0</span><span class="k-delta"><span class="was">17</span> &rarr; <span class="now">5</span></span></div>
+        </div>
+        <div class="split c-6-6" style="align-items:start">
+          <div class="browser b-good">
+            <div class="chrome">
+              <span class="dots"><i></i><i></i><i></i></span>
+              <span class="addr"><span class="lock">&#128274;</span>vuln-demo-patched.apps.tas-ndc.kuhn-labs.com</span>
+              <a class="pop" href="https://vuln-demo-patched.apps.tas-ndc.kuhn-labs.com" target="_blank" rel="noopener">Open &#8599;</a>
+            </div>
+            <div class="viewport">
+              <img src="apps/app-patched.jpg" alt="The running patched application: all 12 CVEs closed, active exposure 0.0, zero critical, high, medium and low">
+              <div class="sheen"></div>
+            </div>
+            <div class="stat">
+              <span class="badge b-good">Active exposure 0.0</span>
+              <span class="badge b-plain">0 critical</span>
+              <span class="badge b-plain">0 high</span>
+              <span class="badge b-plain">Boot 2.7.33</span>
+              <span class="badge b-plain">Spring 5.3.48</span>
+            </div>
+          </div>
+          <div>
+            <div class="shot" style="--z:2;--fx:42%;--fy:22%">
+              <img src="shots/hub-patched.jpg" alt="Tanzu Hub recommendations for vuln-demo-patched: 18 libraries from Spring Enterprise, 0 out of enterprise support, 5 with vulnerabilities">
+              <div class="glass"></div>
+              <div class="scanline"></div>
+              <div class="tag">Hub &#8250; vuln-demo-patched &#8250; Recommendations</div>
+            </div>
+            <div class="callout">
+              <span class="lbl">Honest reading of the remaining 5</span>
+              <p>
+                The app reports <strong>0.0 active exposure</strong>. Hub still flags five libraries against
+                <em>newer</em> advisories — micrometer, actuator-autoconfigure, cloud-function-context,
+                security-web. None are the criticals, each has an enterprise fix, and there are
+                <strong>3 years of support</strong> left to take it.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 6 · THE RUNWAY ========== -->
+    <section class="scene" data-dur="17000">
+      <div class="scene-inner">
+        <p class="eyebrow">Act II &nbsp;·&nbsp; What you actually bought</p>
+        <h2 class="head">Not a patch. A runway.</h2>
+        <p class="lede">
+          Hub reports remaining support per library, per source. Before the change, every number on this app was
+          zero. After a one-line parent bump, the same libraries carry years.
+        </p>
+        <div class="runway">
+          <div class="run">
+            <div class="who">Boot 2.6.3, OSS<small>before</small></div>
+            <div class="track"><div class="fill f-dead" data-bar="2"><b>&nbsp;</b></div><span class="zero">0 years — end of life, no further releases</span></div>
+          </div>
+          <div class="run">
+            <div class="who">Boot 2.7.33, Enterprise<small>spring-boot · security · cloud-function</small></div>
+            <div class="track"><div class="fill f-ent" data-bar="75"><b>3 years remaining</b></div></div>
+          </div>
+          <div class="run">
+            <div class="who">Framework 5.3.48, Enterprise<small>spring-core · beans · webmvc · expression</small></div>
+            <div class="track"><div class="fill f-ent" data-bar="100"><b>4 years remaining</b></div></div>
+          </div>
+        </div>
+        <div class="callout">
+          <span class="lbl">The argument</span>
+          <p>
+            The enterprise repository doesn't remove the need to modernise. It <strong>decouples the deadline
+            from the breach</strong> — you upgrade on an engineering calendar instead of an incident bridge.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 7 · SPRING APP ADVISOR ========== -->
+    <section class="scene" data-dur="26000">
+      <div class="scene-inner">
+        <p class="eyebrow">Act III &nbsp;·&nbsp; Spring App Advisor</p>
+        <div class="split c-6-6" style="align-items:start">
+          <div>
+            <h2 class="head">Then spend the runway.</h2>
+            <p class="lede">
+              App Advisor walks the app across the majors — <strong>2.6 &rarr; 2.7 &rarr; 3.x &rarr; 4.1</strong> — one
+              build-passing step at a time, applying recipes for every breaking change on the way:
+              <code style="font-family:var(--mono);color:var(--ink)">javax</code> &rarr;
+              <code style="font-family:var(--mono);color:var(--ink)">jakarta</code>, the Security DSL rewrite,
+              the config-property moves.
+            </p>
+            <div class="term" style="--th:150px">
+              <div class="bar"><span class="ok">&#9679;</span><span>spring app advisor</span></div>
+              <pre data-type='<span class="p">$</span> <span class="c">advisor build-config get</span>\n<span class="dim">detected  spring-boot 2.6.3 · java 17 · maven</span>\n\n<span class="p">$</span> <span class="p">advisor</span> <span class="c">upgrade-plan get</span>\n<span class="dim">step 1/4</span>  2.6.3 &rarr; 2.7.18   <span class="ok">ok</span>\n<span class="dim">step 2/4</span>  2.7.18 &rarr; 3.0.13  <span class="ok">ok</span>  <span class="dim">javax &rarr; jakarta</span>\n<span class="dim">step 3/4</span>  3.0.13 &rarr; 3.5.x   <span class="ok">ok</span>\n<span class="dim">step 4/4</span>  3.5.x &rarr; <span class="ok">4.1.0</span>    <span class="ok">ok</span>\n\n<span class="ok">BUILD SUCCESS</span> <span class="dim">— 26 Spring libraries, 0 vulnerabilities</span>'></pre>
+            </div>
+            <div class="leap">
+              <div class="lp"><span class="lib">org.springframework.boot</span><span class="from">2.6.3</span><span class="arw">&rarr;</span><span class="to">4.1.0</span><span></span></div>
+              <div class="lp"><span class="lib">org.springframework:spring-core</span><span class="from">5.3.15</span><span class="arw">&rarr;</span><span class="to">7.0.8</span><span></span></div>
+              <div class="lp"><span class="lib">spring-security-web</span><span class="from">5.6.1</span><span class="arw">&rarr;</span><span class="to">7.1.0</span><span></span></div>
+              <div class="lp"><span class="lib">spring-cloud-function-web</span><span class="from">3.2.2</span><span class="arw">&rarr;</span><span class="to">5.0.3</span><span></span></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="browser b-good">
+              <div class="chrome">
+                <span class="dots"><i></i><i></i><i></i></span>
+                <span class="addr"><span class="lock">&#128274;</span>tanzu-vuln-demo-oss4x.apps.tas-ndc.kuhn-labs.com</span>
+                <a class="pop" href="https://tanzu-vuln-demo-oss4x.apps.tas-ndc.kuhn-labs.com" target="_blank" rel="noopener">Open &#8599;</a>
+              </div>
+              <div class="viewport">
+                <img src="apps/app-oss4x.jpg" alt="The running Boot 4.1.0 application: all 12 CVEs closed, active exposure 0.0, on open-source latest">
+                <div class="sheen"></div>
+              </div>
+              <div class="stat">
+                <span class="badge b-good">Active exposure 0.0</span>
+                <span class="badge b-plain">Boot 4.1.0</span>
+                <span class="badge b-plain">Spring 7.0.8</span>
+                <span class="badge b-plain">Maven Central</span>
+              </div>
+            </div>
+            <div class="shot" style="--z:2;--fx:44%;--fy:23%;margin-top:12px;aspect-ratio:16/7">
+              <img src="shots/hub-oss4x.jpg" alt="Tanzu Hub recommendations for tanzu-vuln-demo-oss4x: 26 Spring libraries, zero out of support, zero with vulnerabilities">
+              <div class="glass"></div>
+              <div class="scanline"></div>
+              <div class="tag">Hub &#8250; oss4x &#8250; 26 libraries &#8250; 0 vulnerabilities &#8250; 0 out of support</div>
+            </div>
+            <div class="callout">
+              <span class="lbl">Back on the open-source line</span>
+              <p>
+                That build's own page calls this <em>&ldquo;the hard way&rdquo;</em> — four majors, a new JDK,
+                an application-code rewrite. <strong>App Advisor is what turns the hard way into an afternoon.</strong>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 8 · SCORECARD ========== -->
+    <section class="scene" data-dur="26000">
+      <div class="scene-inner">
+        <p class="eyebrow">The same application, three times</p>
+        <h2 class="head">Buy the time with the repo. Spend it with the Advisor.</h2>
+        <div class="card-wrap" style="margin-top:16px">
+          <table class="score">
+            <colgroup><col><col><col class="hl"><col></colgroup>
+            <thead>
+              <tr>
+                <th></th>
+                <th><b>Vulnerable</b>Boot 2.6.3 · OSS</th>
+                <th><b>Patched</b>Boot 2.7.33 · Enterprise</th>
+                <th><b>Modernised</b>Boot 4.1.0 · OSS</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><th>Critical / High CVEs</th><td class="v-bad">15</td><td class="v-good">0</td><td class="v-good">0</td></tr>
+              <tr><th>Libraries with vulnerabilities</th><td class="v-bad">17</td><td class="v-warn">5</td><td class="v-good">0</td></tr>
+              <tr><th>From Spring Enterprise</th><td class="v-bad">0</td><td class="v-good">18</td><td>0 <span style="color:var(--muted);font-size:11px">(not needed)</span></td></tr>
+              <tr><th>Out of Enterprise support</th><td class="v-bad">10</td><td class="v-good">0</td><td class="v-good">0</td></tr>
+              <tr><th>Out of OSS support</th><td class="v-bad">22</td><td class="v-warn">22</td><td class="v-good">0</td></tr>
+              <tr><th>Support runway</th><td class="v-bad">none</td><td class="v-good">3&ndash;4 years</td><td class="v-good">current</td></tr>
+              <tr><th>Application code changed</th><td>&mdash;</td><td class="v-good">0 lines</td><td class="v-good">0 hand-written</td></tr>
+              <tr><th>Time to get there</th><td>&mdash;</td><td class="v-good">one pom.xml edit</td><td class="v-good">one advisor run</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="routes">
+          <a class="route r-bad" href="https://tanzu-vuln-demo-b2caca.apps.tas-ndc.kuhn-labs.com" target="_blank" rel="noopener">
+            <span class="pip"></span>
+            <span class="txt"><span class="nm">Vulnerable</span><span class="ur">tanzu-vuln-demo-b2caca.apps.tas-ndc.kuhn-labs.com</span></span>
+            <span class="go">&#8599;</span>
+          </a>
+          <a class="route r-mid" href="https://vuln-demo-patched.apps.tas-ndc.kuhn-labs.com" target="_blank" rel="noopener">
+            <span class="pip"></span>
+            <span class="txt"><span class="nm">Patched</span><span class="ur">vuln-demo-patched.apps.tas-ndc.kuhn-labs.com</span></span>
+            <span class="go">&#8599;</span>
+          </a>
+          <a class="route r-good" href="https://tanzu-vuln-demo-oss4x.apps.tas-ndc.kuhn-labs.com" target="_blank" rel="noopener">
+            <span class="pip"></span>
+            <span class="txt"><span class="nm">Modernised</span><span class="ur">tanzu-vuln-demo-oss4x.apps.tas-ndc.kuhn-labs.com</span></span>
+            <span class="go">&#8599;</span>
+          </a>
+          <a class="route r-good" href="https://tanzu-hub.kuhn-labs.com" target="_blank" rel="noopener">
+            <span class="pip"></span>
+            <span class="txt"><span class="nm">Tanzu Hub</span><span class="ur">tanzu-hub.kuhn-labs.com</span></span>
+            <span class="go">&#8599;</span>
+          </a>
+        </div>
+
+        <p class="kicker">
+          Broadcom Spring Enterprise · packages.broadcom.com/artifactory/tanzu-maven &nbsp;·&nbsp;
+          press <b style="color:var(--ink-2)">R</b> to replay
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="transport">
+    <div class="progress"><div class="bar" id="progBar"></div></div>
+    <div class="controls">
+      <button class="btn primary" id="playBtn" aria-label="Pause">&#10074;&#10074; Pause</button>
+      <button class="btn" id="prevBtn" aria-label="Previous scene">&#8592;</button>
+      <button class="btn" id="nextBtn" aria-label="Next scene">&#8594;</button>
+      <div class="dots-nav" id="dotsNav" role="tablist" aria-label="Scenes"></div>
+      <span class="counter" id="counter">01 / 09</span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var scenes  = Array.prototype.slice.call(document.querySelectorAll(".scene"));
+  var stage   = document.getElementById("stage");
+  var progBar = document.getElementById("progBar");
+  var playBtn = document.getElementById("playBtn");
+  var counter = document.getElementById("counter");
+  var actTag  = document.getElementById("actTag");
+  var dotsNav = document.getElementById("dotsNav");
+
+  var LABELS = [
+    ["Cold open",   "The version that isn't there"],
+    ["Act I",       "The vulnerable application"],
+    ["Act I",       "Tanzu Hub sees it, unprompted"],
+    ["Act I",       "The end-of-life wall"],
+    ["Act II",      "One pom.xml, zero code"],
+    ["Act II",      "Patched, in Hub"],
+    ["Act II",      "Three to four years of runway"],
+    ["Act III",     "Spring App Advisor · Boot 4.1"],
+    ["Scorecard",   "The same app, three times"]
+  ];
+
+  var idx = 0, playing = true, sceneStart = 0, elapsed = 0, raf = null;
+  var timers = [];
+
+  /* ---------- dots ---------- */
+  scenes.forEach(function(s, i){
+    var b = document.createElement("button");
+    b.className = "dot" + (i === 0 ? " on" : "");
+    b.type = "button";
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-label", "Scene " + (i + 1) + ": " + LABELS[i][1]);
+    b.addEventListener("click", function(){ go(i); });
+    dotsNav.appendChild(b);
+  });
+  var dots = Array.prototype.slice.call(dotsNav.children);
+
+  function pad(n){ return (n < 10 ? "0" : "") + n; }
+  function clearTimers(){ timers.forEach(clearTimeout); timers = []; }
+  function later(fn, ms){ timers.push(setTimeout(fn, reduced ? 0 : ms)); }
+
+  /* ---------- count-up ---------- */
+  function countUp(el, to, dur){
+    if (reduced || to === 0){ el.textContent = String(to); return; }
+    var t0 = null;
+    function step(ts){
+      if (t0 === null) t0 = ts;
+      var p = Math.min(1, (ts - t0) / dur);
+      var e = 1 - Math.pow(1 - p, 3);
+      el.textContent = String(Math.round(to * e));
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* ---------- typed terminal (markup-aware) ---------- */
+  function typeInto(pre, cps){
+    var src = (pre.getAttribute("data-type") || "").replace(/\\n/g, "\n");
+    if (reduced){ pre.innerHTML = src; return; }
+    pre.innerHTML = "";
+    var caret = document.createElement("span");
+    caret.className = "caret";
+    var i = 0, buf = "";
+    function tick(){
+      if (i >= src.length){ pre.innerHTML = buf; pre.appendChild(caret); return; }
+      // consume a whole tag at once so markup never renders half-written
+      if (src.charAt(i) === "<"){
+        var close = src.indexOf(">", i);
+        if (close === -1) close = src.length - 1;
+        buf += src.slice(i, close + 1);
+        i = close + 1;
+        return tick();
+      }
+      // consume a whole entity at once
+      if (src.charAt(i) === "&"){
+        var semi = src.indexOf(";", i);
+        if (semi > -1 && semi - i < 10){ buf += src.slice(i, semi + 1); i = semi + 1; }
+        else { buf += src.charAt(i); i++; }
+      } else {
+        buf += src.charAt(i); i++;
+      }
+      pre.innerHTML = buf;
+      pre.appendChild(caret);
+      var ch = src.charAt(i - 1);
+      var delay = ch === "\n" ? 170 : (1000 / cps) * (0.6 + Math.random() * 0.9);
+      timers.push(setTimeout(tick, delay));
+    }
+    tick();
+  }
+
+  /* ---------- per-scene entrance ---------- */
+  function enter(sc){
+    clearTimers();
+
+    // staggered tiles
+    var stag = sc.querySelectorAll(".kpi, .lp");
+    Array.prototype.forEach.call(stag, function(el, i){
+      el.style.transitionDelay = (reduced ? 0 : 90 + i * 110) + "ms";
+    });
+    var rows = sc.querySelectorAll("table.score tbody tr");
+    Array.prototype.forEach.call(rows, function(el, i){
+      el.style.transitionDelay = (reduced ? 0 : 220 + i * 95) + "ms";
+    });
+
+    // counters
+    var nums = sc.querySelectorAll("[data-count]");
+    Array.prototype.forEach.call(nums, function(el, i){
+      var to = parseInt(el.getAttribute("data-count"), 10) || 0;
+      el.textContent = "0";
+      later(function(){ countUp(el, to, 1150); }, 340 + i * 140);
+    });
+
+    // terminals
+    var pres = sc.querySelectorAll("pre[data-type]");
+    Array.prototype.forEach.call(pres, function(p, i){
+      later(function(){ typeInto(p, 46); }, 700 + i * 300);
+    });
+
+    // runway bars
+    var bars = sc.querySelectorAll("[data-bar]");
+    Array.prototype.forEach.call(bars, function(b, i){
+      b.style.width = "0";
+      later(function(){ b.style.width = b.getAttribute("data-bar") + "%"; }, 420 + i * 260);
+    });
+
+    // diff lines
+    var rowsD = sc.querySelectorAll("[data-diff] .dl");
+    Array.prototype.forEach.call(rowsD, function(d, i){
+      d.classList.remove("in");
+      d.innerHTML = '<span class="g"></span><span class="t"></span>';
+      d.querySelector(".g").textContent = d.getAttribute("data-g");
+      d.querySelector(".t").innerHTML = d.getAttribute("data-t");
+      later(function(){ d.classList.add("in"); }, 260 + i * 110);
+    });
+
+  }
+
+  function reset(sc){
+    Array.prototype.forEach.call(sc.querySelectorAll(".kpi, .lp, table.score tbody tr"), function(el){
+      el.style.transitionDelay = "";
+    });
+    Array.prototype.forEach.call(sc.querySelectorAll("[data-bar]"), function(b){ b.style.width = "0"; });
+    Array.prototype.forEach.call(sc.querySelectorAll("[data-diff] .dl"), function(d){ d.classList.remove("in"); });
+  }
+
+  function go(n){
+    if (n < 0) n = scenes.length - 1;
+    if (n >= scenes.length) n = 0;
+    if (n === idx && scenes[n].classList.contains("is-active") && elapsed === 0) return;
+    reset(scenes[idx]);
+    scenes[idx].classList.remove("is-active");
+    idx = n;
+    scenes[idx].classList.add("is-active");
+    scenes[idx].scrollTop = 0;
+    dots.forEach(function(d, i){ d.classList.toggle("on", i === idx); });
+    counter.textContent = pad(idx + 1) + " / " + pad(scenes.length);
+    actTag.innerHTML = LABELS[idx][0] + " &nbsp;·&nbsp; <b>" + LABELS[idx][1] + "</b>";
+    elapsed = 0;
+    sceneStart = performance.now();
+    progBar.style.width = "0%";
+    enter(scenes[idx]);
+  }
+
+  function dur(){ return parseInt(scenes[idx].getAttribute("data-dur"), 10) || 16000; }
+
+  function frame(now){
+    if (playing){
+      var t = elapsed + (now - sceneStart);
+      var d = dur();
+      progBar.style.width = Math.min(100, (t / d) * 100) + "%";
+      if (t >= d){ go(idx + 1); }
+    }
+    raf = requestAnimationFrame(frame);
+  }
+
+  function setPlaying(v){
+    if (v === playing) return;
+    if (!playing){ sceneStart = performance.now(); }
+    else { elapsed += performance.now() - sceneStart; }
+    playing = v;
+    playBtn.innerHTML = playing ? "&#10074;&#10074; Pause" : "&#9654; Play";
+    playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
+  }
+
+  playBtn.addEventListener("click", function(){ setPlaying(!playing); });
+  document.getElementById("prevBtn").addEventListener("click", function(){ go(idx - 1); });
+  document.getElementById("nextBtn").addEventListener("click", function(){ go(idx + 1); });
+
+  document.addEventListener("keydown", function(e){
+    var tag = (e.target && e.target.tagName) || "";
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    if (e.key === " " || e.code === "Space"){ e.preventDefault(); setPlaying(!playing); }
+    else if (e.key === "ArrowRight"){ e.preventDefault(); go(idx + 1); }
+    else if (e.key === "ArrowLeft"){ e.preventDefault(); go(idx - 1); }
+    else if (e.key === "r" || e.key === "R"){ go(0); setPlaying(true); }
+    else if (e.key === "f" || e.key === "F"){
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+    }
+  });
+
+  // pause while a scene is being scrolled by hand
+  var scrollPause = null;
+  stage.addEventListener("wheel", function(){
+    if (!playing) return;
+    setPlaying(false);
+    clearTimeout(scrollPause);
+    scrollPause = setTimeout(function(){ setPlaying(true); }, 4000);
+  }, {passive:true});
+
+  counter.textContent = pad(1) + " / " + pad(scenes.length);
+  enter(scenes[0]);
+  sceneStart = performance.now();
+  if (reduced) setPlaying(false);
+  raf = requestAnimationFrame(frame);
+})();
+</script>
